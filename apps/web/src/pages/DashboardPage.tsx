@@ -116,7 +116,7 @@ export function DashboardPage() {
       <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
         <MetricCard label="进行中案件" value={String(metrics.openMatters)} hint={`已结案 ${metrics.closedMatters} 件`} icon={<GavelOutlined />} color="#1b365d" onClick={() => navigate('/matters')} />
         <MetricCard label="活跃客户" value={String(metrics.activeClients)} hint={`咨询线索 ${metrics.leads} 条`} icon={<PeopleOutline />} color="#2f7a55" onClick={() => navigate('/clients')} />
-        <MetricCard label="待办事项" value={String(metrics.tasksDue)} hint="含逾期截止日期与庭审" icon={<CalendarMonthOutlined />} color="#b8860b" onClick={() => navigate('/calendar')} />
+        <MetricCard label="待办事项" value={String(metrics.tasksDue)} hint="含逾期截止日期与庭审" icon={<CalendarMonthOutlined />} color="#b8860b" onClick={() => navigate('/tasks')} />
         <MetricCard label="本月收入" value={formatCurrency(metrics.revenueThisMonth, true)} hint={`应收 ${formatCurrency(metrics.outstandingAmount, true)}`} icon={<TrendingUpOutlined />} color="#b4443c" onClick={() => navigate('/reports')} />
         <MetricCard label="未开票工时" value={`${formatNumber(metrics.unbilledHours)} h`} hint={`可计费 ${formatCurrency(metrics.unbilledAmount, true)}`} icon={<ScheduleOutlined />} color="#2c6b8f" onClick={() => navigate('/billing')} />
         <MetricCard label="未结账单" value={String(metrics.outstandingInvoices)} hint={`应收 ${formatCurrency(metrics.outstandingAmount, true)}`} icon={<ReceiptLongOutlined />} color="#8a6808" onClick={() => navigate('/billing')} />
@@ -213,7 +213,7 @@ export function DashboardPage() {
         <Card>
           <Box sx={{ px: 2, py: 1.75, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography variant="h6">近期任务</Typography>
-            <Button size="small" onClick={() => navigate('/calendar')}>全部</Button>
+            <Button size="small" onClick={() => navigate('/tasks')}>全部</Button>
           </Box>
           <CardContent sx={{ p: 1.5 }}>
             {upcomingTasks.length === 0 && <EmptyState title="暂无待办任务" />}

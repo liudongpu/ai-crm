@@ -42,6 +42,9 @@ export class Document {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  content: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

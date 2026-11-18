@@ -1,4 +1,15 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Matter } from './matter.entity';
+import { Task } from './task.entity';
+import { User } from './user.entity';
 
 @Entity('time_entries')
 export class TimeEntry {
@@ -8,8 +19,23 @@ export class TimeEntry {
   @Column({ type: 'integer' })
   matterId: number;
 
+  @ManyToOne(() => Matter, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'matterId' })
+  matter: Matter;
+
   @Column({ type: 'integer' })
   userId: number;
+
+  @ManyToOne(() => User, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @Column({ type: 'integer', nullable: true })
+  sourceTaskId: number | null;
+
+  @ManyToOne(() => Task, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'sourceTaskId' })
+  task: Task | null;
 
   @Column({ type: 'datetime' })
   date: Date;

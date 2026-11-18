@@ -49,6 +49,10 @@ export class CreateTimeEntryDto {
   @IsOptional()
   @IsInt()
   invoiceId?: number;
+
+  @IsOptional()
+  @IsInt()
+  sourceTaskId?: number;
 }
 
 export class UpdateTimeEntryDto extends PartialType(CreateTimeEntryDto) {}

@@ -45,7 +45,7 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useDashboard, useFeatureCatalog, useSearch, useUsers } from '@/hooks/useCrm';
 import { recordPath, useRecent, type RecentType } from '@/hooks/useRecent';
 import { avatarColor, initials } from '@/lib/format';
-import type { Feature, FeatureCatalog } from '@/types';
+import { moduleHref, resolveNavigation, type Navigation } from '@/lib/navigation';
 
 /** One icon per primary module; reused by both the top tabs and the sidebar. */
 const moduleIcons: Record<string, ReactElement> = {
@@ -68,7 +68,7 @@ const createMenu = [
   { label: '新客户', to: '/clients?new=1' },
   { label: '新联系人', to: '/contacts?new=1' },
   { label: '新咨询线索', to: '/leads?new=1' },
-  { label: '新任务', to: '/calendar?new=1' },
+  { label: '新任务', to: '/tasks?new=1' },
   { label: '新文档', to: '/documents?new=1' },
   { label: '新账单', to: '/billing?new=1' },
   { label: '新信托交易', to: '/trust?new=1' },
@@ -90,67 +90,6 @@ type SearchItem = {
   company?: string | null;
   email?: string | null;
 };
-
-type Navigation = { module?: FeatureCatalog; feature?: Feature };
-
-/** Base path of a feature route, without any query string (e.g. /billing?tab=time -> /billing). */
-function baseRoute(feature: Feature): string {
-  return feature.route.split('?')[0] ?? feature.route;
-}
-
-/** The first secondary feature of a module is its canonical landing route. */
-function moduleHref(module: FeatureCatalog): string {
-  const first = [...module.features].sort((a, b) => a.position - b.position)[0];
-  return first?.route ?? '/';
-}
-
-function matchesFeature(feature: Feature, pathname: string): boolean {
-  const code = pathname.match(/^\/features\/([^/]+)\/?$/)?.[1];
-  if (code) return feature.code === code;
-
-  const base = baseRoute(feature);
-  return base === pathname || (base !== '/' && pathname.startsWith(`${base}/`));
-}
-
-/**
- * Resolve the active primary module / secondary feature from the current URL.
- * `/features/:code` matches by code exactly; other paths use a segment-aware
- * route prefix match, longest route first. Query `tab` breaks ties for the
- * billing features that all share `/billing` as their base route.
- */
-function resolveNavigation(modules: FeatureCatalog[], pathname: string, search: string): Navigation {
-  const entries = modules.flatMap((module) =>
-    [...module.features]
-      .sort((a, b) => a.position - b.position)
-      .map((feature) => ({ module, feature })),
-  );
-
-  const featureCode = pathname.match(/^\/features\/([^/]+)\/?$/)?.[1];
-  if (featureCode) {
-    const exact = entries.find((entry) => entry.feature.code === featureCode);
-    if (exact) return exact;
-  }
-
-  const candidates = entries
-    .filter(({ feature }) => matchesFeature(feature, pathname))
-    .sort((a, b) => baseRoute(b.feature).length - baseRoute(a.feature).length);
-
-  if (candidates.length > 1) {
-    const tab = new URLSearchParams(search).get('tab');
-    if (tab) {
-      const tabMatch = candidates.find(({ feature }) => {
-        const routeTab = new URLSearchParams(feature.route.split('?')[1] ?? '').get('tab');
-        return routeTab === tab;
-      });
-      if (tabMatch) return tabMatch;
-    }
-  }
-
-  if (candidates.length > 0) return candidates[0];
-
-  // At "/" the dashboard belongs to reports; anywhere else keep a sensible default.
-  return { module: modules.find((module) => module.code === 'reports') ?? modules[0] };
-}
 
 function GlobalSearch() {
   const [value, setValue] = useState('');

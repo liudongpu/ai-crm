@@ -8,11 +8,30 @@ import {
   getFeatureRecords,
   getFeatureStats,
   getFeatures,
+  getWorkspaceDefinition,
+  getWorkspaceDefinitions,
+  getWorkspaceItem,
+  getWorkspaceItems,
+  getWorkspaceSettings,
+  getWorkspaceStats,
   updateFeatureRecord,
+  updateWorkspaceItem,
+  updateWorkspaceSettings,
+  createWorkspaceItem,
+  deleteWorkspaceItem,
 } from '@/lib/api';
 import { useToast } from '@/components/common/ToastProvider';
 import type {
+  CalendarDraftEvent,
   ClientInput,
+  CourtHolidayInput,
+  CourtRuleInput,
+  DeadlineCalculateInput,
+  DeadlineCalculation,
+  DeadlineStatus,
+  DeadlineToEventsResult,
+  DraftExtractInput,
+  DraftUpdateInput,
   FeatureQuery,
   FeatureRecord,
   FeatureRecordInput,
@@ -26,6 +45,8 @@ import type {
   ContactInput,
   DocumentInput,
   ExpenseInput,
+  IcsImportInput,
+  IcsImportResult,
   InvoiceInput,
   LeadConvertInput,
   LeadConvertResult,
@@ -33,10 +54,18 @@ import type {
   MatterInput,
   NoteInput,
   PaymentInput,
+  ReminderInput,
+  StatuteInput,
   TaskInput,
   TimeEntryInput,
+  TimeLinkInput,
   TrustTransactionInput,
   UserInput,
+  WorkspaceDefinition,
+  WorkspaceItemInput,
+  WorkspaceItemQuery,
+  WorkspaceSetting,
+  WorkspaceStats,
 } from '@/types';
 
 export const keys = {
@@ -56,10 +85,30 @@ export const keys = {
   trustTransactions: ['trustTransactions'] as const,
   communications: ['communications'] as const,
   notes: ['notes'] as const,
+  calendar: {
+    all: ['calendar'] as const,
+    events: ['calendar', 'events'] as const,
+    overview: ['calendar', 'overview'] as const,
+    rules: ['calendar', 'rules'] as const,
+    holidays: ['calendar', 'holidays'] as const,
+    deadlines: ['calendar', 'deadlines'] as const,
+    statutes: ['calendar', 'statutes'] as const,
+    drafts: ['calendar', 'drafts'] as const,
+    reminders: ['calendar', 'reminders'] as const,
+    unlogged: ['calendar', 'time-link', 'unlogged'] as const,
+    logged: ['calendar', 'time-link', 'logged'] as const,
+  },
   featureCatalog: ['featureCatalog'] as const,
   features: ['features'] as const,
   featureRecords: ['featureRecords'] as const,
   featureStats: ['featureStats'] as const,
+  workspace: {
+    definitions: ['workspace', 'definitions'] as const,
+    definition: ['workspace', 'definition'] as const,
+    items: ['workspace', 'items'] as const,
+    stats: ['workspace', 'stats'] as const,
+    settings: ['workspace', 'settings'] as const,
+  },
   dashboard: ['dashboard'] as const,
   reports: ['reports'] as const,
   search: ['search'] as const,
@@ -176,6 +225,39 @@ export const useCommunications = (params: Params = {}) =>
   useList(keys.communications, () => api.communications.list(params), params);
 export const useNotes = (params: Params = {}) => useList(keys.notes, () => api.notes.list(params), params);
 
+export const useCalendarEvents = (params: Params = {}) =>
+  useList(keys.calendar.events, () => api.calendar.events.list(params), params);
+
+export const useCalendarOverview = (params: Params = {}) =>
+  useQuery({
+    queryKey: [...keys.calendar.overview, params],
+    queryFn: () => api.calendar.overview(params),
+  });
+
+export const useCourtRules = () => useList(keys.calendar.rules, () => api.calendar.rules.list());
+export const useCourtHolidays = () => useList(keys.calendar.holidays, () => api.calendar.holidays.list());
+
+export const useDeadlines = (params: Params = {}) =>
+  useList(keys.calendar.deadlines, () => api.calendar.deadlines.list(params), params);
+
+export const useDeadline = (id?: number) =>
+  useDetail(keys.calendar.deadlines, id, () => api.calendar.deadlines.get(id!));
+
+export const useStatutes = (params: Params = {}) =>
+  useList(keys.calendar.statutes, () => api.calendar.statutes.list(params), params);
+
+export const useAssistantDrafts = (params: Params = {}) =>
+  useList(keys.calendar.drafts, () => api.calendar.assistant.drafts.list(params), params);
+
+export const useCalendarReminders = (params: Params = {}) =>
+  useList(keys.calendar.reminders, () => api.calendar.reminders.list(params), params);
+
+export const useUnloggedEvents = (params: Params = {}) =>
+  useList(keys.calendar.unlogged, () => api.calendar.timeLink.unlogged(params), params);
+
+export const useLoggedTimeEntries = () =>
+  useList(keys.calendar.logged, () => api.calendar.timeLink.logged());
+
 export const useFeatureCatalog = () =>
   useQuery<FeatureCatalog[]>({ queryKey: keys.featureCatalog, queryFn: getFeatureCatalog });
 
@@ -192,6 +274,39 @@ export const useFeatureStats = (featureCode?: string) =>
   useQuery<FeatureStats>({
     queryKey: [...keys.featureStats, featureCode],
     queryFn: () => getFeatureStats(featureCode ?? ''),
+    enabled: Boolean(featureCode),
+  });
+
+export const useWorkspaceDefinitions = () =>
+  useQuery<WorkspaceDefinition[]>({
+    queryKey: keys.workspace.definitions,
+    queryFn: getWorkspaceDefinitions,
+  });
+
+export const useWorkspaceDefinition = (code?: string) =>
+  useQuery<WorkspaceDefinition>({
+    queryKey: [...keys.workspace.definition, code],
+    queryFn: () => getWorkspaceDefinition(code ?? ''),
+    enabled: Boolean(code),
+  });
+
+export const useWorkspaceItems = (params: WorkspaceItemQuery = {}) =>
+  useList(keys.workspace.items, () => getWorkspaceItems(params), params);
+
+export const useWorkspaceItem = (id?: number) =>
+  useDetail(keys.workspace.items, id, () => getWorkspaceItem(id!));
+
+export const useWorkspaceStats = (featureCode?: string) =>
+  useQuery<WorkspaceStats>({
+    queryKey: [...keys.workspace.stats, featureCode],
+    queryFn: () => getWorkspaceStats(featureCode ?? ''),
+    enabled: Boolean(featureCode),
+  });
+
+export const useWorkspaceSettings = (featureCode?: string) =>
+  useQuery<WorkspaceSetting[]>({
+    queryKey: [...keys.workspace.settings, featureCode],
+    queryFn: () => getWorkspaceSettings(featureCode ?? ''),
     enabled: Boolean(featureCode),
   });
 
@@ -302,8 +417,98 @@ export const useCreateNote = () => useCreateMutation<NoteInput>(api.notes.create
 export const useUpdateNote = () => useUpdateMutation<NoteInput>((args) => api.notes.update(args.id, args.data), '备注已更新');
 export const useDeleteNote = () => useDeleteMutation(api.notes.remove, '备注已删除');
 
+/* ---------------------------- Calendar hooks ---------------------------- */
+
+export const useCreateCalendarEvent = () =>
+  useCreateMutation<TaskInput>(api.calendar.events.create, '日程已创建');
+export const useUpdateCalendarEvent = () =>
+  useUpdateMutation<TaskInput>((args) => api.calendar.events.update(args.id, args.data), '日程已更新');
+export const useDeleteCalendarEvent = () =>
+  useDeleteMutation(api.calendar.events.remove, '日程已删除');
+
+export const useCreateCourtRule = () =>
+  useCreateMutation<CourtRuleInput>(api.calendar.rules.create, '法院规则已新增');
+export const useCreateCourtHoliday = () =>
+  useCreateMutation<CourtHolidayInput>(api.calendar.holidays.create, '法院假期已新增');
+export const useDeleteCourtHoliday = () =>
+  useDeleteMutation(api.calendar.holidays.remove, '法院假期已删除');
+
+export const useCalculateDeadline = () =>
+  useActionMutation<DeadlineCalculateInput, DeadlineCalculation>(
+    api.calendar.deadlines.calculate,
+    '期限链已计算',
+  );
+export const useUpdateDeadlineTrigger = () =>
+  useActionMutation<{ id: number; triggerDate: string }>(
+    (args) => api.calendar.deadlines.updateTrigger(args.id, args.triggerDate),
+    '触发日期已更新，期限链已重算',
+  );
+export const useUpdateDeadlineStatus = () =>
+  useActionMutation<{ id: number; status: DeadlineStatus }>(
+    (args) => api.calendar.deadlines.updateStatus(args.id, args.status),
+    '期限记录状态已更新',
+  );
+export const useDeleteDeadline = () =>
+  useDeleteMutation(api.calendar.deadlines.remove, '期限计算记录已删除');
+export const useGenerateDeadlineEvents = () =>
+  useActionMutation<number, DeadlineToEventsResult>((id) => api.calendar.deadlines.toEvents(id));
+
+export const useCreateStatute = () =>
+  useCreateMutation<StatuteInput>(api.calendar.statutes.create, '时效记录已创建');
+export const useUpdateStatute = () =>
+  useUpdateMutation<StatuteInput>((args) => api.calendar.statutes.update(args.id, args.data), '时效记录已更新');
+export const useDeleteStatute = () =>
+  useDeleteMutation(api.calendar.statutes.remove, '时效记录已删除');
+
+export const useExtractDates = () =>
+  useActionMutation<DraftExtractInput, CalendarDraftEvent[]>(api.calendar.assistant.extract);
+export const useUpdateDraft = () =>
+  useActionMutation<{ id: number; data: DraftUpdateInput }>(
+    (args) => api.calendar.assistant.drafts.update(args.id, args.data),
+    '草稿状态已更新',
+  );
+export const useDeleteDraft = () =>
+  useDeleteMutation(api.calendar.assistant.drafts.remove, '草稿已删除');
+
+export const useImportIcs = () =>
+  useActionMutation<IcsImportInput, IcsImportResult>(api.calendar.importIcs);
+export const useCreateReminder = () =>
+  useCreateMutation<ReminderInput>(api.calendar.reminders.create, '提醒已创建');
+export const useUpdateReminder = () =>
+  useUpdateMutation<ReminderInput>((args) => api.calendar.reminders.update(args.id, args.data), '提醒已更新');
+export const useDeleteReminder = () =>
+  useDeleteMutation(api.calendar.reminders.remove, '提醒已删除');
+export const useMarkReminderSent = () =>
+  useActionMutation<number>((id) => api.calendar.reminders.update(id, { status: 'sent' }), '已标记为已发送');
+
+export const useCreateTimeLink = () =>
+  useActionMutation<TimeLinkInput>(api.calendar.timeLink.create, '工时已记录');
+
 export const useCreateFeatureRecord = () =>
   useCreateMutation<FeatureRecordInput>(createFeatureRecord, '功能记录已创建');
 export const useUpdateFeatureRecord = () =>
   useUpdateMutation<FeatureRecordInput>((args) => updateFeatureRecord(args.id, args.data), '功能记录已更新');
 export const useDeleteFeatureRecord = () => useDeleteMutation(deleteFeatureRecord, '功能记录已删除');
+
+export const useCreateWorkspaceItem = () =>
+  useCreateMutation<WorkspaceItemInput>(createWorkspaceItem, '记录已创建');
+export const useUpdateWorkspaceItem = () =>
+  useUpdateMutation<WorkspaceItemInput>(
+    (args) => updateWorkspaceItem(args.id, args.data),
+    '记录已更新',
+  );
+export const useDeleteWorkspaceItem = () => useDeleteMutation(deleteWorkspaceItem, '记录已删除');
+
+export const useUpdateWorkspaceSettings = (featureCode: string) => {
+  const refresh = useRefresh();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (values: Array<{ key: string; value: string }>) =>
+      updateWorkspaceSettings(featureCode, values),
+    onSuccess: () => {
+      refresh();
+      toast.success('本地配置已保存');
+    },
+    onError: useNotifyError(),
+  });
+};

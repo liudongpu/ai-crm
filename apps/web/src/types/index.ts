@@ -138,6 +138,15 @@ export interface Task extends BaseRecord {
   matterId?: number | null;
   assigneeId?: number | null;
   completedAt?: string | null;
+  calendarId: string;
+  visibility: 'firm' | 'team' | 'personal';
+  startDate?: string | null;
+  endDate?: string | null;
+  allDay: boolean;
+  reminderMinutes: number;
+  sourceType?: string | null;
+  sourceId?: number | null;
+  sourceDetail?: string | null;
   matter?: Matter | null;
   assignee?: User | null;
 }
@@ -154,6 +163,7 @@ export interface Document extends BaseRecord {
   uploadedById?: number | null;
   signed: boolean;
   description?: string | null;
+  content?: string | null;
   matter?: Matter | null;
   client?: Client | null;
   uploadedBy?: User | null;
@@ -170,6 +180,8 @@ export interface TimeEntry extends BaseRecord {
   amount: number;
   invoiced: boolean;
   invoiceId?: number | null;
+  sourceTaskId?: number | null;
+  task?: Task | null;
   matter?: Matter | null;
   user?: User | null;
 }
@@ -376,6 +388,124 @@ export interface FeatureStats {
   byStatus: Record<FeatureStatus, number>;
 }
 
+/* ---------------------------- Calendar domain --------------------------- */
+
+export interface CourtRuleStep {
+  code: string;
+  label: string;
+  offsetDays: number;
+  base?: string;
+  businessDays?: boolean;
+}
+
+export interface CourtRule extends BaseRecord {
+  code: string;
+  name: string;
+  jurisdiction: string;
+  description?: string | null;
+  active: boolean;
+  position: number;
+  steps: CourtRuleStep[];
+}
+
+export interface CourtHoliday extends BaseRecord {
+  date: string;
+  name: string;
+  jurisdiction: string;
+}
+
+export interface DeadlineItem {
+  code: string;
+  label: string;
+  offsetDays: number;
+  base: string;
+  rawDate: string;
+  dueDate: string;
+  adjusted: boolean;
+  holidayAdjusted: boolean;
+  taskId?: number | null;
+}
+
+export type DeadlineStatus = 'draft' | 'confirmed' | 'archived';
+
+export interface DeadlineCalculation extends BaseRecord {
+  title: string;
+  ruleId: number;
+  matterId?: number | null;
+  ownerId?: number | null;
+  triggerDate: string;
+  status: DeadlineStatus;
+  note?: string | null;
+  items: DeadlineItem[];
+  rule?: CourtRule | null;
+  matter?: Matter | null;
+  owner?: User | null;
+}
+
+export type StatuteStatus = 'tracking' | 'paused' | 'completed';
+
+export interface Statute extends BaseRecord {
+  title: string;
+  matterId?: number | null;
+  causeDate: string;
+  periodDays: number;
+  dueDate: string;
+  alertDays: number;
+  status: StatuteStatus;
+  ownerId?: number | null;
+  note?: string | null;
+  daysLeft?: number;
+  matter?: Matter | null;
+  owner?: User | null;
+}
+
+export type CalendarDraftStatus = 'draft' | 'confirmed' | 'dismissed';
+
+export interface CalendarDraftEvent extends BaseRecord {
+  documentId?: number | null;
+  sourceName: string;
+  sourceSnippet: string;
+  extractedDate: string;
+  keyword: string;
+  title: string;
+  status: CalendarDraftStatus;
+  taskId?: number | null;
+  document?: Document | null;
+}
+
+export type ReminderChannel = 'in_app' | 'email' | 'sms';
+export type ReminderStatus = 'pending' | 'sent' | 'cancelled';
+
+export interface CalendarReminder extends BaseRecord {
+  taskId: number;
+  channel: ReminderChannel;
+  recipient?: string | null;
+  leadMinutes: number;
+  sendAt: string;
+  status: ReminderStatus;
+  message?: string | null;
+  sentAt?: string | null;
+  task?: Task | null;
+}
+
+export interface CalendarOverview {
+  total: number;
+  calendars: Array<{ id: string; name: string; eventCount: number }>;
+  byType: Array<{ type: string; count: number }>;
+  unloggedCount: number;
+}
+
+export interface IcsImportResult {
+  imported: number;
+  skipped: number;
+  events: Task[];
+}
+
+export interface DeadlineToEventsResult {
+  created: number;
+  tasks: Task[];
+}
+
 /** Request payloads */
 export type UserInput = {
   name: string;
@@ -478,6 +608,15 @@ export type TaskInput = {
   done?: boolean;
   matterId?: number | null;
   assigneeId?: number | null;
+  calendarId?: string;
+  visibility?: 'firm' | 'team' | 'personal';
+  startDate?: string | null;
+  endDate?: string | null;
+  allDay?: boolean;
+  reminderMinutes?: number;
+  sourceType?: string | null;
+  sourceId?: number | null;
+  sourceDetail?: string | null;
 };
 
 export type DocumentInput = {
@@ -490,6 +629,7 @@ export type DocumentInput = {
   uploadedById?: number | null;
   signed?: boolean;
   description?: string | null;
+  content?: string | null;
 };
 
 export type TimeEntryInput = {
@@ -587,4 +727,165 @@ export type FeatureRecordQuery = {
 
 export type FeatureQuery = {
   moduleCode?: string;
+};
+
+/* ---------------------------- Workspace domain -------------------------- */
+
+export type WorkspaceFieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'currency';
+export type WorkspaceSettingType = 'switch' | 'text' | 'select' | 'number';
+export type WorkspaceKind = 'business' | 'config' | 'analytics';
+
+export interface WorkspaceFieldDef {
+  key: string;
+  label: string;
+  type: WorkspaceFieldType;
+  options?: string[];
+}
+
+export interface WorkspaceStatusDef {
+  value: string;
+  label: string;
+  color: string;
+}
+
+export interface WorkspaceSettingDef {
+  key: string;
+  label: string;
+  type: WorkspaceSettingType;
+  defaultValue: string;
+  options?: string[];
+  description?: string;
+}
+
+export interface WorkspaceSeedDef {
+  title: string;
+  summary: string;
+  status: string;
+  data: Record<string, string>;
+}
+
+export interface WorkspaceDefinition {
+  code: string;
+  kind: WorkspaceKind;
+  statuses: WorkspaceStatusDef[];
+  fields: WorkspaceFieldDef[];
+  settings: WorkspaceSettingDef[];
+  seeds: WorkspaceSeedDef[];
+}
+
+export interface WorkspaceItem extends BaseRecord {
+  featureCode: string;
+  title: string;
+  summary?: string | null;
+  status: string;
+  ownerName?: string | null;
+  dueDate?: string | null;
+  amount?: number | null;
+  data?: Record<string, string> | null;
+}
+
+export interface WorkspaceSetting {
+  id: number;
+  featureCode: string;
+  key: string;
+  value: string;
+  label?: string;
+  type?: WorkspaceSettingType;
+  options?: string[];
+  description?: string;
+  updatedAt?: string | null;
+}
+
+export interface WorkspaceStats {
+  total: number;
+  byStatus: Record<string, number>;
+}
+
+export type WorkspaceItemInput = {
+  featureCode: string;
+  title: string;
+  summary?: string | null;
+  status?: string;
+  ownerName?: string | null;
+  dueDate?: string | null;
+  amount?: number | null;
+  data?: Record<string, string> | null;
+};
+
+export type WorkspaceItemQuery = {
+  featureCode?: string;
+  status?: string;
+  search?: string;
+};
+
+export type CourtRuleInput = {
+  code: string;
+  name: string;
+  jurisdiction: string;
+  description?: string | null;
+  active?: boolean;
+  position?: number;
+  steps: CourtRuleStep[];
+};
+
+export type CourtHolidayInput = {
+  date: string;
+  name: string;
+  jurisdiction?: string;
+};
+
+export type DeadlineCalculateInput = {
+  ruleId: number;
+  triggerDate: string;
+  matterId?: number | null;
+  title?: string;
+  note?: string;
+  ownerId?: number | null;
+};
+
+export type StatuteInput = {
+  title: string;
+  matterId?: number | null;
+  causeDate: string;
+  periodDays: number;
+  alertDays?: number;
+  status?: StatuteStatus;
+  ownerId?: number | null;
+  note?: string | null;
+};
+
+export type DraftExtractInput = {
+  text?: string;
+  documentId?: number;
+  sourceName?: string;
+  matterId?: number | null;
+};
+
+export type DraftUpdateInput = {
+  status: Extract<CalendarDraftStatus, 'confirmed' | 'dismissed'>;
+  title?: string;
+  dueDate?: string;
+};
+
+export type ReminderInput = {
+  taskId: number;
+  channel: ReminderChannel;
+  recipient?: string | null;
+  leadMinutes: number;
+  message?: string | null;
+  status?: ReminderStatus;
+};
+
+export type IcsImportInput = {
+  content: string;
+  calendarId?: string;
+};
+
+export type TimeLinkInput = {
+  taskId: number;
+  hours: number;
+  date?: string;
+  description?: string;
+  billable?: boolean;
+  rate?: number;
 };

@@ -11,6 +11,7 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -20,7 +21,17 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { ConfirmDialog } from './ConfirmDialog';
 import { EmptyState, ErrorState, LoadingRows } from './States';
-import { useCreateTask, useDeleteTask, useMatters, useTasks, useToggleTask, useUpdateTask, useUsers } from '@/hooks/useCrm';
+import {
+  useCreateCalendarEvent,
+  useCreateTask,
+  useDeleteTask,
+  useMatters,
+  useTasks,
+  useToggleTask,
+  useUpdateCalendarEvent,
+  useUpdateTask,
+  useUsers,
+} from '@/hooks/useCrm';
 import { formatDateTime, toLocalInput } from '@/lib/format';
 import { priorityMeta, taskTypeLabel, taskTypeMeta } from '@/lib/meta';
 import type { Priority, Task, TaskInput, TaskType } from '@/types';
@@ -39,6 +50,12 @@ type FormState = {
   priority: Priority;
   matterId: string;
   assigneeId: string;
+  calendarId: string;
+  visibility: 'firm' | 'team' | 'personal';
+  startDate: string;
+  endDate: string;
+  allDay: boolean;
+  reminderMinutes: string;
 };
 
 const emptyForm: FormState = {
@@ -49,6 +66,12 @@ const emptyForm: FormState = {
   priority: 'medium',
   matterId: '',
   assigneeId: '',
+  calendarId: 'firm',
+  visibility: 'firm',
+  startDate: '',
+  endDate: '',
+  allDay: false,
+  reminderMinutes: '60',
 };
 
 export function TaskFormDialog({
@@ -56,15 +79,28 @@ export function TaskFormDialog({
   onClose,
   task,
   defaultMatterId,
+  defaultCalendarId,
+  defaultStart,
+  defaultAllDay,
+  calendarApi = false,
 }: {
   open: boolean;
   onClose: () => void;
   task?: Task | null;
   defaultMatterId?: number;
+  /** Preselect a calendar when creating (firm / team / personal / matter:<id>). */
+  defaultCalendarId?: string;
+  /** ISO date used when a blank calendar day is clicked. */
+  defaultStart?: string | null;
+  defaultAllDay?: boolean;
+  /** Calendar pages use /calendar/events; other callers keep the original tasks API. */
+  calendarApi?: boolean;
 }) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
+  const createEvent = useCreateCalendarEvent();
+  const updateEvent = useUpdateCalendarEvent();
   const { data: matters } = useMatters();
   const { data: users } = useUsers();
 
@@ -74,12 +110,18 @@ export function TaskFormDialog({
       title: task?.title ?? '',
       type: task?.type ?? 'task',
       description: task?.description ?? '',
-      dueDate: toLocalInput(task?.dueDate),
+      dueDate: toLocalInput(task?.dueDate ?? defaultStart),
       priority: task?.priority ?? 'medium',
       matterId: String(task?.matterId ?? defaultMatterId ?? ''),
       assigneeId: String(task?.assigneeId ?? ''),
+      calendarId: task?.calendarId ?? defaultCalendarId ?? 'firm',
+      visibility: task?.visibility ?? 'firm',
+      startDate: toLocalInput(task?.startDate ?? defaultStart),
+      endDate: toLocalInput(task?.endDate),
+      allDay: task?.allDay ?? defaultAllDay ?? false,
+      reminderMinutes: String(task?.reminderMinutes ?? 60),
     });
-  }, [open, task, defaultMatterId]);
+  }, [open, task, defaultMatterId, defaultCalendarId, defaultStart, defaultAllDay]);
 
   const submit = () => {
     if (!form.title.trim()) return;
@@ -91,11 +133,21 @@ export function TaskFormDialog({
       priority: form.priority,
       matterId: form.matterId ? Number(form.matterId) : null,
       assigneeId: form.assigneeId ? Number(form.assigneeId) : null,
+      calendarId: form.calendarId,
+      visibility: form.visibility,
+      startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
+      endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
+      allDay: form.allDay,
+      reminderMinutes: Math.max(0, Number(form.reminderMinutes) || 0),
     };
+    const onDone = () => onClose();
     if (task) {
-      updateTask.mutate({ id: task.id, data: payload }, { onSuccess: onClose });
+      if (calendarApi) updateEvent.mutate({ id: task.id, data: payload }, { onSuccess: onDone });
+      else updateTask.mutate({ id: task.id, data: payload }, { onSuccess: onDone });
+    } else if (calendarApi) {
+      createEvent.mutate(payload, { onSuccess: onDone });
     } else {
-      createTask.mutate(payload, { onSuccess: onClose });
+      createTask.mutate(payload, { onSuccess: onDone });
     }
   };
 
@@ -149,6 +201,57 @@ export function TaskFormDialog({
               {(users ?? []).map((user) => <MenuItem key={user.id} value={String(user.id)}>{user.name}</MenuItem>)}
             </Select>
           </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="task-calendar">所属日历</InputLabel>
+            <Select labelId="task-calendar" label="所属日历" value={form.calendarId} onChange={(event) => setForm({ ...form, calendarId: event.target.value })}>
+              <MenuItem value="firm">律所日历</MenuItem>
+              <MenuItem value="team">团队日历</MenuItem>
+              <MenuItem value="personal">个人日历</MenuItem>
+              {(matters ?? []).map((matter) => (
+                <MenuItem key={matter.id} value={`matter:${matter.id}`}>案件：{matter.title}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="task-visibility">可见性</InputLabel>
+            <Select
+              labelId="task-visibility"
+              label="可见性"
+              value={form.visibility}
+              onChange={(event) => setForm({ ...form, visibility: event.target.value as FormState['visibility'] })}
+            >
+              <MenuItem value="firm">全所可见</MenuItem>
+              <MenuItem value="team">仅团队可见</MenuItem>
+              <MenuItem value="personal">仅自己可见</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="开始时间"
+            type="datetime-local"
+            value={form.startDate}
+            onChange={(event) => setForm({ ...form, startDate: event.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }}
+            fullWidth
+          />
+          <TextField
+            label="结束时间"
+            type="datetime-local"
+            value={form.endDate}
+            onChange={(event) => setForm({ ...form, endDate: event.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }}
+            fullWidth
+          />
+          <TextField
+            label="提前提醒（分钟）"
+            type="number"
+            value={form.reminderMinutes}
+            onChange={(event) => setForm({ ...form, reminderMinutes: event.target.value })}
+            fullWidth
+          />
+          <FormControlLabel
+            control={<Checkbox checked={form.allDay} onChange={(event) => setForm({ ...form, allDay: event.target.checked })} />}
+            label="全天事项"
+          />
         </Box>
         <TextField
           label="描述"
@@ -164,7 +267,13 @@ export function TaskFormDialog({
         <Button
           variant="contained"
           onClick={submit}
-          disabled={!form.title.trim() || createTask.isPending || updateTask.isPending}
+          disabled={
+            !form.title.trim() ||
+            createTask.isPending ||
+            updateTask.isPending ||
+            createEvent.isPending ||
+            updateEvent.isPending
+          }
         >
           保存
         </Button>

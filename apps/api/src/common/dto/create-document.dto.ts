@@ -44,6 +44,10 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  content?: string;
 }
 
 export class UpdateDocumentDto extends PartialType(CreateDocumentDto) {}

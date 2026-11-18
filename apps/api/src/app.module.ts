@@ -7,10 +7,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SeedModule } from './database/seed.module';
 import { SeedService } from './database/seed.service';
 import {
+  CalendarDraftEvent,
+  CalendarReminder,
   Client,
   Communication,
   ConflictCheck,
   Contact,
+  CourtHoliday,
+  CourtRule,
+  DeadlineCalculation,
   Document,
   Expense,
   Feature,
@@ -22,11 +27,15 @@ import {
   MatterStage,
   Note,
   Payment,
+  Statute,
   Task,
   TimeEntry,
   TrustTransaction,
   User,
+  WorkspaceItem,
+  WorkspaceSetting,
 } from './database/entities';
+import { CalendarModule } from './modules/calendar/calendar.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { CommunicationsModule } from './modules/communications/communications.module';
 import { ConflictsModule } from './modules/conflicts/conflicts.module';
@@ -45,6 +54,7 @@ import { TasksModule } from './modules/tasks/tasks.module';
 import { TimeEntriesModule } from './modules/time-entries/time-entries.module';
 import { TrustTransactionsModule } from './modules/trust-transactions/trust-transactions.module';
 import { UsersModule } from './modules/users/users.module';
+import { WorkspaceModule } from './modules/workspace/workspace.module';
 
 const databasePath = resolve(__dirname, '..', '..', '..', 'data', 'crm.sqlite');
 mkdirSync(dirname(databasePath), { recursive: true });
@@ -78,11 +88,20 @@ const shouldServeWeb = existsSync(join(webDistPath, 'index.html'));
         TrustTransaction,
         Communication,
         Note,
+        CourtRule,
+        CourtHoliday,
+        DeadlineCalculation,
+        Statute,
+        CalendarDraftEvent,
+        CalendarReminder,
+        WorkspaceItem,
+        WorkspaceSetting,
       ],
       synchronize: true,
       logging: false,
     }),
     UsersModule,
+    CalendarModule,
     ClientsModule,
     ContactsModule,
     MattersModule,
@@ -100,6 +119,7 @@ const shouldServeWeb = existsSync(join(webDistPath, 'index.html'));
     NotesModule,
     SearchModule,
     DashboardModule,
+    WorkspaceModule,
     SeedModule,
     ...(shouldServeWeb
       ? [ServeStaticModule.forRoot({ rootPath: webDistPath, exclude: ['/api/{*splat}'] })]

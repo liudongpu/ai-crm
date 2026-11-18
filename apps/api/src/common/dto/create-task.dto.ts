@@ -39,6 +39,44 @@ export class CreateTaskDto {
   @Type(() => Date)
   @IsDate()
   completedAt?: Date;
+
+  @IsOptional()
+  @IsString()
+  calendarId?: string;
+
+  @IsOptional()
+  @IsString()
+  visibility?: string;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  startDate?: Date;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  endDate?: Date;
+
+  @IsOptional()
+  @IsBoolean()
+  allDay?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  reminderMinutes?: number;
+
+  @IsOptional()
+  @IsString()
+  sourceType?: string;
+
+  @IsOptional()
+  @IsInt()
+  sourceId?: number;
+
+  @IsOptional()
+  @IsString()
+  sourceDetail?: string;
 }
 
 export class UpdateTaskDto extends PartialType(CreateTaskDto) {}

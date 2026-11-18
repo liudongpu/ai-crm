@@ -1,4 +1,14 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Matter } from './matter.entity';
+import { User } from './user.entity';
 
 export const TASK_TYPES = ['task', 'deadline', 'hearing', 'court', 'reminder'] as const;
 export type TaskType = (typeof TASK_TYPES)[number];
@@ -34,6 +44,41 @@ export class Task {
 
   @Column({ type: 'integer', nullable: true })
   assigneeId: number | null;
+
+  @ManyToOne(() => Matter, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'matterId' })
+  matter: Matter | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'assigneeId' })
+  assignee: User | null;
+
+  @Column({ type: 'varchar', default: 'firm' })
+  calendarId: string;
+
+  @Column({ type: 'varchar', default: 'firm' })
+  visibility: string;
+
+  @Column({ type: 'datetime', nullable: true })
+  startDate: Date | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  endDate: Date | null;
+
+  @Column({ default: false })
+  allDay: boolean;
+
+  @Column({ type: 'integer', default: 60 })
+  reminderMinutes: number;
+
+  @Column({ type: 'varchar', nullable: true })
+  sourceType: string | null;
+
+  @Column({ type: 'integer', nullable: true })
+  sourceId: number | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  sourceDetail: string | null;
 
   @Column({ type: 'datetime', nullable: true })
   completedAt: Date | null;

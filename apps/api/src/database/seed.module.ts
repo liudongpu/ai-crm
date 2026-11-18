@@ -1,10 +1,15 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
+  CalendarDraftEvent,
+  CalendarReminder,
   Client,
   Communication,
   ConflictCheck,
   Contact,
+  CourtHoliday,
+  CourtRule,
+  DeadlineCalculation,
   Document,
   Expense,
   Feature,
@@ -16,10 +21,13 @@ import {
   MatterStage,
   Note,
   Payment,
+  Statute,
   Task,
   TimeEntry,
   TrustTransaction,
   User,
+  WorkspaceItem,
+  WorkspaceSetting,
 } from './entities';
 import { SeedService } from './seed.service';
 
@@ -45,6 +53,14 @@ import { SeedService } from './seed.service';
       TrustTransaction,
       Communication,
       Note,
+      CourtRule,
+      CourtHoliday,
+      DeadlineCalculation,
+      Statute,
+      CalendarDraftEvent,
+      CalendarReminder,
+      WorkspaceItem,
+      WorkspaceSetting,
     ]),
   ],
   providers: [SeedService],
