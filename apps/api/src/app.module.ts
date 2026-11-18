@@ -13,6 +13,9 @@ import {
   Contact,
   Document,
   Expense,
+  Feature,
+  FeatureModule,
+  FeatureRecord,
   Invoice,
   Lead,
   Matter,
@@ -31,6 +34,7 @@ import { ContactsModule } from './modules/contacts/contacts.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
+import { FeaturesModule } from './modules/features/features.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { MattersModule } from './modules/matters/matters.module';
@@ -66,6 +70,9 @@ const shouldServeWeb = existsSync(join(webDistPath, 'index.html'));
         Document,
         TimeEntry,
         Expense,
+        FeatureModule,
+        Feature,
+        FeatureRecord,
         Invoice,
         Payment,
         TrustTransaction,
@@ -85,6 +92,7 @@ const shouldServeWeb = existsSync(join(webDistPath, 'index.html'));
     DocumentsModule,
     TimeEntriesModule,
     ExpensesModule,
+    FeaturesModule,
     InvoicesModule,
     PaymentsModule,
     TrustTransactionsModule,

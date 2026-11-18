@@ -8,6 +8,11 @@ import {
   Contact,
   Document,
   Expense,
+  Feature as FeatureEntity,
+  FeatureModule as FeatureModuleEntity,
+  FeatureRecord,
+  FeatureRecordPriority,
+  FeatureRecordStatus,
   Invoice,
   InvoiceItem,
   Lead,
@@ -335,6 +340,126 @@ const NOTES: Array<{
   { title: '结案提示', content: '遗产继承案件已调解结案，信托账户余额需安排退款。', targetType: 'matter', target: { kind: 'matter', index: 10 }, author: 4 },
 ];
 
+const FEATURE_MODULES: Array<{ code: string; name: string; description: string }> = [
+  { code: 'grow', name: '获客与客户关系管理', description: '从线索、咨询登记、资格筛查到签约转化与客户经营的完整获客流程。' },
+  { code: 'manage', name: '案件与事项管理', description: '案件档案、自定义数据、任务流程与活动时间线的统一管理。' },
+  { code: 'calendar', name: '日历、任务与截止日期管理', description: '日程、法定期限、时效预警与日历计费联动。' },
+  { code: 'draft', name: '文档管理与文档自动化', description: '文档存储、模板自动化、法院表格与协作版本管理。' },
+  { code: 'communicate', name: '客户沟通与客户门户', description: '统一沟通记录、邮件归档、客户门户与自助服务。' },
+  { code: 'billing', name: '时间、费用与计费', description: '工时、费用、费率、账单生成与应收催收的全流程计费。' },
+  { code: 'accounting', name: '支付、信托与法律会计', description: '支付计划、信托记账、对账、总账及财务报表。' },
+  { code: 'work_ai', name: '实体法律工作AI', description: '本地演示：案件分析、法律检索、策略检验与文档审阅辅助。' },
+  { code: 'reports', name: '报告、分析与经营管理', description: '仪表盘、经营指标、自定义报告与审计追溯。' },
+  { code: 'automation', name: '自动化、工作流与AI运营能力', description: '工作流、任务与计费自动化及本地演示的AI运营辅助。' },
+  { code: 'integrations', name: '集成生态与开放能力', description: '本地演示：邮件、会计、文档、沟通与开放API等集成配置。' },
+  { code: 'security', name: '安全、合规与治理', description: '认证加密、合规框架、访问控制与数据治理配置。' },
+];
+
+type FeatureSeed = {
+  module: string;
+  code: string;
+  name: string;
+  route: string;
+  description: string;
+  titles: [string, string];
+};
+
+const FEATURES: FeatureSeed[] = [
+  { module: 'grow', code: 'grow_crm', name: '线索与CRM', route: '/leads', description: '统一管理线索、客户与跟进记录，跟踪商机转化。', titles: ['星海科技线索分配与跟进', '季度商机转化漏斗复盘'] },
+  { module: 'grow', code: 'grow_intake', name: '获客intake', route: '/features/grow_intake', description: '登记初次咨询与委托意向，形成标准化 intake 记录。', titles: ['官网咨询登记表配置', '新客户 intake 信息补全'] },
+  { module: 'grow', code: 'grow_qualification', name: '资格筛查', route: '/features/grow_qualification', description: '按预算、需求与匹配度评估潜在客户资格。', titles: ['远景能源合作资格评分', '低预算线索筛选规则调整'] },
+  { module: 'grow', code: 'grow_conflict', name: '冲突检查', route: '/features/grow_conflict', description: '委托前进行利益冲突检索并留存检查结果。', titles: ['股权转让案冲突检索记录', '潜在客户同名主体核查'] },
+  { module: 'grow', code: 'grow_appointment', name: '预约与跟进', route: '/features/grow_appointment', description: '安排咨询预约、提醒跟进并跟踪到场情况。', titles: ['并购项目初次面谈预约', '客户回访计划与提醒'] },
+  { module: 'grow', code: 'grow_engagement', name: '签约转化', route: '/features/grow_engagement', description: '管理报价、合同签署与委托转正式客户的转化。', titles: ['常年法律顾问报价审批', '委托合同签署与归档'] },
+  { module: 'grow', code: 'grow_marketing', name: '营销', route: '/features/grow_marketing', description: '维护营销活动、渠道投放与内容素材。', titles: ['知识产权主题沙龙策划', '公众号专业文章排期'] },
+  { module: 'grow', code: 'grow_referral', name: '口碑与复购', route: '/features/grow_referral', description: '跟踪老客户转介绍、满意度与二次委托机会。', titles: ['结案客户满意度回访', '老客户转介绍奖励方案'] },
+
+  { module: 'manage', code: 'manage_case_file', name: '案件档案', route: '/matters', description: '案件立卷、材料归集与案卷归档管理。', titles: ['货款纠纷案卷材料清单', '结案卷宗扫描归档'] },
+  { module: 'manage', code: 'manage_custom_data', name: '自定义数据', route: '/features/manage_custom_data', description: '配置案件与客户自定义字段及表单。', titles: ['合规审查自定义字段配置', '客户行业分类字典维护'] },
+  { module: 'manage', code: 'manage_tasks', name: '任务与流程', route: '/calendar', description: '统一管理任务分派、进度与截止日期。', titles: ['证据交换任务分派', '庭审准备清单跟踪'] },
+  { module: 'manage', code: 'manage_workflow_template', name: '案件流程模板', route: '/features/manage_workflow_template', description: '按案件类型维护标准化流程与节点模板。', titles: ['商事诉讼流程模板更新', '并购项目节点模板启用'] },
+  { module: 'manage', code: 'manage_conflict_search', name: '冲突与检索', route: '/features/manage_conflict_search', description: '跨客户、案件与联系人进行冲突与关键词检索。', titles: ['集团关联方批量检索', '历史案卷关键词检索'] },
+  { module: 'manage', code: 'manage_activity_timeline', name: '活动时间线', route: '/features/manage_activity_timeline', description: '汇总案件沟通、任务与文档形成时间线。', titles: ['医疗纠纷案件时间轴梳理', '客户往来活动记录汇总'] },
+  { module: 'manage', code: 'manage_mobile_access', name: '移动与访问', route: '/features/manage_mobile_access', description: '配置移动端访问方式与外出办案权限。', titles: ['外出庭审移动访问配置', '助理移动端权限调整'] },
+
+  { module: 'calendar', code: 'calendar_manage', name: '日历管理', route: '/calendar', description: '统一查看与维护日程、庭审及提醒事项。', titles: ['下周庭审日历排期', '团队共享日历订阅'] },
+  { module: 'calendar', code: 'calendar_deadline_calc', name: '截止日期计算', route: '/features/calendar_deadline_calc', description: '按程序规则计算并校验各类法定期限。', titles: ['上诉期限自动计算规则', '举证期限计算结果复核'] },
+  { module: 'calendar', code: 'calendar_statute', name: '时效管理', route: '/features/calendar_statute', description: '跟踪诉讼时效与保全期限并设置预警。', titles: ['著作权维权时效预警', '应收账款诉讼时效台账'] },
+  { module: 'calendar', code: 'calendar_ai_assist', name: 'AI日历辅助', route: '/features/calendar_ai_assist', description: '本地演示：辅助识别日程文本并生成提醒建议。', titles: ['会议纪要日程提取演示', '期限提醒文案生成演示'] },
+  { module: 'calendar', code: 'calendar_sync_reminder', name: '同步与提醒', route: '/features/calendar_sync_reminder', description: '本地演示：配置日历同步与多渠道提醒规则。', titles: ['邮箱日历同步配置演示', '开庭前三天提醒规则'] },
+  { module: 'calendar', code: 'calendar_time_link', name: '日历与计费联动', route: '/features/calendar_time_link', description: '将日程与计时、账单关联，避免漏记工时。', titles: ['庭审日程关联工时记录', '会议时长自动计费配置'] },
+
+  { module: 'draft', code: 'draft_storage', name: '文档存储与管理', route: '/documents', description: '集中存储合同、证据与函件并维护版本。', titles: ['证据材料目录整理', '合同模板库分类调整'] },
+  { module: 'draft', code: 'draft_template', name: '模板自动化', route: '/features/draft_template', description: '维护文书模板与变量替换规则。', titles: ['民事起诉状模板变量配置', '律师函模板批量生成设置'] },
+  { module: 'draft', code: 'draft_court_form', name: '法院表格', route: '/features/draft_court_form', description: '本地演示：法院表格填写规范与草稿管理。', titles: ['立案表格填写要点清单', '管辖权异议表格草稿'] },
+  { module: 'draft', code: 'draft_esign', name: '电子签名', route: '/features/draft_esign', description: '本地演示：签署流程配置与签署状态跟踪。', titles: ['和解协议签署流程配置', '客户签署待办跟踪'] },
+  { module: 'draft', code: 'draft_collaboration', name: '协作与版本', route: '/features/draft_collaboration', description: '管理文档多人协作、批注与版本差异。', titles: ['许可协议第三版批注汇总', '合同修订版本对比记录'] },
+  { module: 'draft', code: 'draft_word', name: 'Word集成', route: '/features/draft_word', description: '本地演示：Word 文档导入导出与格式校验。', titles: ['Word 文书导入格式校验', '批量导出文书配置演示'] },
+
+  { module: 'communicate', code: 'comm_unified', name: '统一沟通', route: '/communications', description: '汇总邮件、电话、会议与客户消息形成统一记录。', titles: ['客户邮件往来归档', '案件沟通记录汇总'] },
+  { module: 'communicate', code: 'comm_email_archive', name: '邮件归档', route: '/features/comm_email_archive', description: '本地演示：邮件归档规则与留存策略配置。', titles: ['客户邮件归档规则配置', '重要函件留存期限设置'] },
+  { module: 'communicate', code: 'comm_client_portal', name: '客户门户', route: '/features/comm_client_portal', description: '本地演示：客户门户可见内容与权限配置。', titles: ['门户展示材料清单配置', '客户可见范围调整'] },
+  { module: 'communicate', code: 'comm_auto_followup', name: '自动跟进', route: '/features/comm_auto_followup', description: '本地演示：按阶段触发跟进提醒与话术。', titles: ['结案后回访自动提醒', '线索沉默期跟进规则'] },
+  { module: 'communicate', code: 'comm_phone_meeting', name: '电话与会议', route: '/features/comm_phone_meeting', description: '记录电话与会议要点、参会人及后续任务。', titles: ['并购进度会议纪要', '客户来电要点记录'] },
+  { module: 'communicate', code: 'comm_self_service', name: '客户自助', route: '/features/comm_self_service', description: '本地演示：客户自助查询与资料下载配置。', titles: ['自助下载资料权限配置', '案件进度查询入口演示'] },
+
+  { module: 'billing', code: 'billing_time', name: '时间记录', route: '/billing?tab=time', description: '记录工时、费率与可计费状态。', titles: ['货款纠纷案件工时补录', '并购尽调工时复核'] },
+  { module: 'billing', code: 'billing_expense', name: '费用记录', route: '/billing?tab=expense', description: '登记案件相关支出与报销凭证。', titles: ['差旅费用报销登记', '诉讼费支付凭证归档'] },
+  { module: 'billing', code: 'billing_rates', name: '费率与计费模式', route: '/features/billing_rates', description: '维护人员费率与计时、固定、风险代理模式。', titles: ['合伙人收费标准更新', '风险代理计费方案配置'] },
+  { module: 'billing', code: 'billing_generate', name: '账单生成', route: '/billing?tab=invoices', description: '从工时与费用生成账单草稿。', titles: ['八月工时账单生成', '阶段服务费账单草稿'] },
+  { module: 'billing', code: 'billing_invoice', name: '发票与发送', route: '/billing?tab=invoices', description: '账单审批后开票并记录发送情况。', titles: ['尾款发票开具与发送', '客户发票签收确认'] },
+  { module: 'billing', code: 'billing_einvoice', name: '电子账单', route: '/features/billing_einvoice', description: '本地演示：电子账单模板与推送配置。', titles: ['电子账单模板配置演示', '账单推送渠道设置'] },
+  { module: 'billing', code: 'billing_ar', name: '应收与催收', route: '/features/billing_ar', description: '跟踪应收账款账龄与催收进度。', titles: ['逾期应收款催收计划', '客户欠款账龄分析'] },
+  { module: 'billing', code: 'billing_approval', name: '计费审批', route: '/features/billing_approval', description: '账单与折扣的审批流转记录。', titles: ['大额账单合伙人审批', '折扣申请审批记录'] },
+
+  { module: 'accounting', code: 'payment_online', name: '在线支付', route: '/trust', description: '本地演示：在线支付渠道配置与到账通知。', titles: ['在线支付渠道配置演示', '客户扫码支付到账核对'] },
+  { module: 'accounting', code: 'payment_plan', name: '支付计划', route: '/features/payment_plan', description: '制定分期付款计划并跟踪执行。', titles: ['并购服务费分期计划', '分期付款逾期提醒'] },
+  { module: 'accounting', code: 'trust_accounting', name: '信托会计', route: '/trust', description: '记录信托账户存取、结转与余额。', titles: ['诉讼保证金存入登记', '律师费结转记账'] },
+  { module: 'accounting', code: 'reconciliation', name: '对账', route: '/features/reconciliation', description: '本地演示：银行流水与账务记录核对。', titles: ['银行流水月度对账', '信托账户差异核查'] },
+  { module: 'accounting', code: 'general_ledger', name: '总账会计', route: '/features/general_ledger', description: '本地演示：总账科目与凭证管理。', titles: ['月末结转凭证配置', '收入科目余额核对'] },
+  { module: 'accounting', code: 'financial_statements', name: '财务报表', route: '/features/financial_statements', description: '本地演示：资产负债与经营报表配置。', titles: ['季度经营报表生成', '律所收入结构分析'] },
+  { module: 'accounting', code: 'ap_expense', name: '应付与支出', route: '/features/ap_expense', description: '管理供应商付款与费用支出。', titles: ['专家咨询费付款登记', '供应商发票核对'] },
+  { module: 'accounting', code: 'accountant_access', name: '会计协作', route: '/features/accountant_access', description: '本地演示：外部会计协作账号与权限配置。', titles: ['外聘会计只读权限配置', '交接资料清单确认'] },
+
+  { module: 'work_ai', code: 'work_case_analysis', name: '案件分析', route: '/features/work_case_analysis', description: '本地演示：案件要素梳理与争点分析记录。', titles: ['货款纠纷争点分析记录', '竞业限制案件要素梳理'] },
+  { module: 'work_ai', code: 'work_legal_research', name: '法律检索', route: '/features/work_legal_research', description: '本地演示：法规与案例检索线索管理。', titles: ['诉讼时效法规检索记录', '类案检索结果整理'] },
+  { module: 'work_ai', code: 'work_strategy', name: '策略检验', route: '/features/work_strategy', description: '本地演示：诉讼策略假设与风险检验。', titles: ['和解方案风险评估', '庭审策略备选方案'] },
+  { module: 'work_ai', code: 'work_drafting', name: '起草', route: '/features/work_drafting', description: '本地演示：法律文书初稿与修订记录。', titles: ['代理词初稿起草记录', '法律意见书结构提纲'] },
+  { module: 'work_ai', code: 'work_doc_review', name: '文档审阅', route: '/features/work_doc_review', description: '本地演示：合同审阅要点与批注记录。', titles: ['许可协议条款审阅要点', '尽职调查文件风险标注'] },
+  { module: 'work_ai', code: 'work_citation', name: '引用与验证', route: '/features/work_citation', description: '本地演示：法条与判例引用核对。', titles: ['判决引用条文核验', '案例引文出处确认'] },
+  { module: 'work_ai', code: 'work_permission', name: '权限继承', route: '/features/work_permission', description: '本地演示：AI 辅助权限继承与可见范围配置。', titles: ['律师助理继承权限配置', '案件组可见范围调整'] },
+
+  { module: 'reports', code: 'report_dashboard', name: '律所仪表盘', route: '/', description: '汇总案件、客户、财务与任务的关键经营指标。', titles: ['经营指标看板配置', '本月关键指标复盘'] },
+  { module: 'reports', code: 'report_metrics', name: '核心经营指标', route: '/reports', description: '定义与跟踪律所核心 KPI 口径。', titles: ['律师创收指标口径确认', '案件转化率月度统计'] },
+  { module: 'reports', code: 'report_custom', name: '自定义报告', route: '/features/report_custom', description: '配置自定义报告模板与数据维度。', titles: ['客户行业分布报告模板', '结案周期统计配置'] },
+  { module: 'reports', code: 'report_acquisition', name: '获客报告', route: '/features/report_acquisition', description: '分析线索来源、渠道投放与转化效果。', titles: ['线索来源渠道分析', '市场活动转化报告'] },
+  { module: 'reports', code: 'report_financial', name: '财务报告', route: '/features/report_financial', description: '汇总营收、应收与信托余额的财务分析。', titles: ['季度营收分析报告', '应收账款结构分析'] },
+  { module: 'reports', code: 'report_ai_insight', name: 'AI洞察', route: '/features/report_ai_insight', description: '本地演示：记录业务趋势与风险洞察提示。', titles: ['业务趋势洞察记录', '客户流失风险提示记录'] },
+  { module: 'reports', code: 'report_audit', name: '审计与可追溯', route: '/features/report_audit', description: '留存关键操作日志并支持追溯核查。', titles: ['账单修改审计日志核查', '数据导出记录追溯'] },
+
+  { module: 'automation', code: 'auto_workflow', name: '工作流', route: '/features/auto_workflow', description: '配置审批与业务流转规则。', titles: ['立案审批流配置', '合同审阅流转规则'] },
+  { module: 'automation', code: 'auto_ai_ops', name: 'AI运营辅助', route: '/features/auto_ai_ops', description: '本地演示：运营待办排序与风险提示。', titles: ['日常待办智能排序演示', '案件风险提示规则配置'] },
+  { module: 'automation', code: 'auto_ai_comms', name: 'AI沟通辅助', route: '/features/auto_ai_comms', description: '本地演示：沟通话术与会议纪要辅助。', titles: ['客户回复话术模板配置', '会议纪要生成演示'] },
+  { module: 'automation', code: 'auto_task', name: '任务自动化', route: '/features/auto_task', description: '按事件与期限自动创建和触发任务。', titles: ['立案后任务自动生成', '期限临近任务触发规则'] },
+  { module: 'automation', code: 'auto_billing', name: '计费自动化', route: '/features/auto_billing', description: '按规则自动生成工时计费与账单。', titles: ['超时工时自动计费规则', '月度账单自动生成设置'] },
+  { module: 'automation', code: 'auto_marketing', name: '营销自动化', route: '/features/auto_marketing', description: '本地演示：活动线索分配与推送规则。', titles: ['活动线索自动分配规则', '节假日祝福推送配置'] },
+
+  { module: 'integrations', code: 'integration_email_calendar', name: '邮件与日历', route: '/features/integration_email_calendar', description: '本地演示：邮箱与日历同步参数配置。', titles: ['邮箱日历同步参数配置', '会议邀请同步测试'] },
+  { module: 'integrations', code: 'integration_accounting', name: '会计', route: '/features/integration_accounting', description: '本地演示：财务软件对接与凭证推送配置。', titles: ['财务软件对接参数配置', '凭证推送测试记录'] },
+  { module: 'integrations', code: 'integration_docs', name: '文档与存储', route: '/features/integration_docs', description: '本地演示：外部文档存储同步与导入。', titles: ['云盘同步目录配置', '外部文档导入测试'] },
+  { module: 'integrations', code: 'integration_comms', name: '沟通与会议', route: '/features/integration_comms', description: '本地演示：会议平台与通话记录同步配置。', titles: ['会议平台账号配置', '通话记录同步演示'] },
+  { module: 'integrations', code: 'integration_automation', name: '自动化与开放API', route: '/features/integration_automation', description: '本地演示：开放 API 密钥与 Webhook 回调配置。', titles: ['开放 API 密钥配置', 'Webhook 回调测试'] },
+  { module: 'integrations', code: 'integration_practice', name: '执业领域应用', route: '/features/integration_practice', description: '本地演示：执业领域工具与应用接入配置。', titles: ['知识产权工具配置', '合规审查插件启用'] },
+  { module: 'integrations', code: 'integration_bank', name: '银行与信用卡同步', route: '/features/integration_bank', description: '本地演示：银行与信用卡流水同步配置。', titles: ['银行账户同步配置', '信用卡支出导入测试'] },
+
+  { module: 'security', code: 'security_auth', name: '认证与加密', route: '/features/security_auth', description: '本地演示：认证策略与敏感字段加密配置。', titles: ['双因素认证策略配置', '敏感字段加密规则'] },
+  { module: 'security', code: 'security_compliance', name: '合规框架', route: '/features/security_compliance', description: '本地演示：合规检查清单与自评记录。', titles: ['数据合规检查清单', '年度合规自评记录'] },
+  { module: 'security', code: 'security_ai_policy', name: 'AI数据政策', route: '/features/security_ai_policy', description: '本地演示：AI 输入数据脱敏与禁止上传规则。', titles: ['AI 输入数据脱敏规则', '禁止上传资料清单'] },
+  { module: 'security', code: 'security_access', name: '访问控制', route: '/features/security_access', description: '配置角色权限与案件数据可见范围。', titles: ['案件组访问权限矩阵', '外部协作者访问期限'] },
+  { module: 'security', code: 'security_account', name: '账户安全', route: '/features/security_account', description: '管理账号有效期、密码策略与停用记录。', titles: ['离职账号停用记录', '密码有效期策略配置'] },
+  { module: 'security', code: 'security_governance', name: '治理', route: '/features/security_governance', description: '本地演示：数据治理决议与定期复核计划。', titles: ['数据治理委员会决议记录', '年度权限复核计划'] },
+];
+
 @Injectable()
 export class SeedService {
   private readonly logger = new Logger(SeedService.name);
@@ -356,9 +481,14 @@ export class SeedService {
     @InjectRepository(TrustTransaction) private readonly trust: Repository<TrustTransaction>,
     @InjectRepository(Communication) private readonly communications: Repository<Communication>,
     @InjectRepository(Note) private readonly notes: Repository<Note>,
+    @InjectRepository(FeatureModuleEntity)
+    private readonly featureModules: Repository<FeatureModuleEntity>,
+    @InjectRepository(FeatureEntity) private readonly featureEntities: Repository<FeatureEntity>,
+    @InjectRepository(FeatureRecord) private readonly featureRecords: Repository<FeatureRecord>,
   ) {}
 
   async seed() {
+    await this.seedFeatures();
     if ((await this.users.count()) > 0) return;
 
     this.logger.log('首次启动，正在初始化律所演示数据...');
@@ -721,6 +851,85 @@ export class SeedService {
     }
 
     this.logger.log('律所演示数据初始化完成。');
+  }
+
+  private async seedFeatures() {
+    if ((await this.featureModules.count()) > 0) return;
+
+    this.logger.log('首次启动，正在初始化全量功能目录...');
+
+    const moduleEntities: FeatureModuleEntity[] = [];
+    for (const [index, item] of FEATURE_MODULES.entries()) {
+      moduleEntities.push(
+        await this.featureModules.save(
+          this.featureModules.create({
+            code: item.code,
+            name: item.name,
+            description: item.description,
+            position: index + 1,
+          }),
+        ),
+      );
+    }
+    const moduleIds = new Map(moduleEntities.map((item) => [item.code, item.id]));
+
+    const modulePositions = new Map<string, number>();
+    for (const item of FEATURES) {
+      const position = (modulePositions.get(item.module) ?? 0) + 1;
+      modulePositions.set(item.module, position);
+      await this.featureEntities.save(
+        this.featureEntities.create({
+          moduleId: moduleIds.get(item.module)!,
+          code: item.code,
+          name: item.name,
+          description: item.description,
+          route: item.route,
+          position,
+          enabled: true,
+        }),
+      );
+    }
+
+    if ((await this.featureRecords.count()) === 0) {
+      const statuses: FeatureRecordStatus[] = [
+        'draft',
+        'active',
+        'pending',
+        'completed',
+        'archived',
+      ];
+      const priorities: FeatureRecordPriority[] = ['medium', 'high', 'low', 'medium', 'high'];
+      let sequence = 0;
+      for (const feature of FEATURES) {
+        for (const [recordIndex, title] of feature.titles.entries()) {
+          const index = sequence++;
+          const status = statuses[(index + recordIndex) % statuses.length];
+          await this.featureRecords.save(
+            this.featureRecords.create({
+              featureCode: feature.code,
+              title,
+              description: `${feature.description}本记录用于跟踪“${title}”的处理进展。`,
+              status,
+              priority: priorities[index % priorities.length],
+              ownerId: index % 3 === 0 ? null : (index % USERS.length) + 1,
+              ownerName: index % 3 === 0 ? null : USERS[index % USERS.length].name,
+              matterId: index % 4 === 0 ? (index % 12) + 1 : null,
+              clientId: index % 4 === 0 ? (index % 6) + 1 : null,
+              dueDate: index % 2 === 0 ? this.inDays((index % 14) + 2, 17) : null,
+              amount: index % 4 === 1 ? 1200 + (index % 6) * 800 : null,
+              data:
+                index % 3 === 0
+                  ? { source: 'seed', module: feature.module, tags: [feature.name, status] }
+                  : null,
+            }),
+          );
+        }
+      }
+    }
+
+    this.logger.log(
+      `功能目录初始化完成：${FEATURE_MODULES.length} 个一级模块、${FEATURES.length} 个二级功能、${FEATURES.length * 2} 条功能记录。`,
+    );
   }
 
   private daysAgo(days: number) {

@@ -9,6 +9,7 @@ import { ContactDetailPage } from '@/pages/ContactDetailPage';
 import { ContactsPage } from '@/pages/ContactsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DocumentsPage } from '@/pages/DocumentsPage';
+import { FeaturePage } from '@/pages/FeaturePage';
 import { LeadDetailPage } from '@/pages/LeadDetailPage';
 import { LeadsPage } from '@/pages/LeadsPage';
 import { MatterDetailPage } from '@/pages/MatterDetailPage';
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/leads/:id" element={<LeadDetailPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/features/:featureCode" element={<FeaturePage />} />
         <Route path="/billing" element={<BillingPage />} />
         <Route path="/trust" element={<TrustPage />} />
         <Route path="/communications" element={<CommunicationsPage />} />

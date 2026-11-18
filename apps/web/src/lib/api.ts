@@ -13,6 +13,13 @@ import type {
   DocumentInput,
   Expense,
   ExpenseInput,
+  Feature,
+  FeatureCatalog,
+  FeatureQuery,
+  FeatureRecord,
+  FeatureRecordInput,
+  FeatureRecordQuery,
+  FeatureStats,
   Invoice,
   InvoiceInput,
   Lead,
@@ -106,7 +113,39 @@ function crud<T, TInput>(resource: string) {
   };
 }
 
+/** Feature catalog requests (paths mirror the backend feature module exactly). */
+export const getFeatureCatalog = () => request<FeatureCatalog[]>('/features/catalog');
+
+export const getFeatures = (params: FeatureQuery = {}) =>
+  request<Feature[]>(`/features${toQuery(params)}`);
+
+export const getFeatureRecords = (params: FeatureRecordQuery = {}) =>
+  request<FeatureRecord[]>(`/features/records${toQuery(params)}`);
+
+export const getFeatureRecord = (id: number) => request<FeatureRecord>(`/features/records/${id}`);
+
+export const createFeatureRecord = (data: FeatureRecordInput) =>
+  send<FeatureRecord>('POST', '/features/records', data);
+
+export const updateFeatureRecord = (id: number, data: Partial<FeatureRecordInput>) =>
+  send<FeatureRecord>('PATCH', `/features/records/${id}`, data);
+
+export const deleteFeatureRecord = (id: number) => send<{ id: number }>('DELETE', `/features/records/${id}`);
+
+export const getFeatureStats = (featureCode: string) =>
+  request<FeatureStats>(`/features/stats${toQuery({ featureCode })}`);
+
 export const api = {
+  features: {
+    catalog: getFeatureCatalog,
+    list: getFeatures,
+    records: getFeatureRecords,
+    record: getFeatureRecord,
+    create: createFeatureRecord,
+    update: updateFeatureRecord,
+    remove: deleteFeatureRecord,
+    stats: getFeatureStats,
+  },
   users: crud<User, UserInput>('users'),
   clients: crud<Client, ClientInput>('clients'),
   contacts: crud<Contact, ContactInput>('contacts'),

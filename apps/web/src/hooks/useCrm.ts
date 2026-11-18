@@ -1,8 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import {
+  api,
+  createFeatureRecord,
+  deleteFeatureRecord,
+  getFeatureCatalog,
+  getFeatureRecord,
+  getFeatureRecords,
+  getFeatureStats,
+  getFeatures,
+  updateFeatureRecord,
+} from '@/lib/api';
 import { useToast } from '@/components/common/ToastProvider';
 import type {
   ClientInput,
+  FeatureQuery,
+  FeatureRecord,
+  FeatureRecordInput,
+  FeatureRecordQuery,
+  FeatureStats,
+  FeatureCatalog,
+  Feature,
   CommunicationInput,
   ConflictCheckInput,
   ConflictCheckResult,
@@ -39,6 +56,10 @@ export const keys = {
   trustTransactions: ['trustTransactions'] as const,
   communications: ['communications'] as const,
   notes: ['notes'] as const,
+  featureCatalog: ['featureCatalog'] as const,
+  features: ['features'] as const,
+  featureRecords: ['featureRecords'] as const,
+  featureStats: ['featureStats'] as const,
   dashboard: ['dashboard'] as const,
   reports: ['reports'] as const,
   search: ['search'] as const,
@@ -155,6 +176,25 @@ export const useCommunications = (params: Params = {}) =>
   useList(keys.communications, () => api.communications.list(params), params);
 export const useNotes = (params: Params = {}) => useList(keys.notes, () => api.notes.list(params), params);
 
+export const useFeatureCatalog = () =>
+  useQuery<FeatureCatalog[]>({ queryKey: keys.featureCatalog, queryFn: getFeatureCatalog });
+
+export const useFeatures = (params: FeatureQuery = {}) =>
+  useList<Feature>(keys.features, () => getFeatures(params), params);
+
+export const useFeatureRecords = (params: FeatureRecordQuery = {}) =>
+  useList(keys.featureRecords, () => getFeatureRecords(params), params);
+
+export const useFeatureRecord = (id?: number) =>
+  useDetail<FeatureRecord>(keys.featureRecords, id, () => getFeatureRecord(id!));
+
+export const useFeatureStats = (featureCode?: string) =>
+  useQuery<FeatureStats>({
+    queryKey: [...keys.featureStats, featureCode],
+    queryFn: () => getFeatureStats(featureCode ?? ''),
+    enabled: Boolean(featureCode),
+  });
+
 export function useDashboard() {
   return useQuery({ queryKey: keys.dashboard, queryFn: api.dashboard.summary });
 }
@@ -261,3 +301,9 @@ export const useDeleteCommunication = () => useDeleteMutation(api.communications
 export const useCreateNote = () => useCreateMutation<NoteInput>(api.notes.create, '备注已添加');
 export const useUpdateNote = () => useUpdateMutation<NoteInput>((args) => api.notes.update(args.id, args.data), '备注已更新');
 export const useDeleteNote = () => useDeleteMutation(api.notes.remove, '备注已删除');
+
+export const useCreateFeatureRecord = () =>
+  useCreateMutation<FeatureRecordInput>(createFeatureRecord, '功能记录已创建');
+export const useUpdateFeatureRecord = () =>
+  useUpdateMutation<FeatureRecordInput>((args) => updateFeatureRecord(args.id, args.data), '功能记录已更新');
+export const useDeleteFeatureRecord = () => useDeleteMutation(deleteFeatureRecord, '功能记录已删除');

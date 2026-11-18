@@ -327,6 +327,55 @@ export interface SearchResults {
   documents: Document[];
 }
 
+/** Full feature catalog: 12 primary modules with their secondary features. */
+export interface FeatureModule {
+  id: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  position: number;
+  features?: Feature[];
+}
+
+export interface Feature {
+  id: number;
+  moduleId: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  route: string;
+  position: number;
+  enabled: boolean;
+  module?: FeatureModule | null;
+}
+
+/** A module entry returned by GET /api/features/catalog. */
+export interface FeatureCatalog extends FeatureModule {
+  features: Feature[];
+}
+
+export type FeatureStatus = 'draft' | 'active' | 'pending' | 'completed' | 'archived';
+
+export interface FeatureRecord extends BaseRecord {
+  featureCode: string;
+  title: string;
+  description?: string | null;
+  status: FeatureStatus;
+  priority: Priority;
+  ownerId?: number | null;
+  ownerName?: string | null;
+  matterId?: number | null;
+  clientId?: number | null;
+  dueDate?: string | null;
+  amount?: number | null;
+  data?: Record<string, unknown> | null;
+}
+
+export interface FeatureStats {
+  total: number;
+  byStatus: Record<FeatureStatus, number>;
+}
+
 /** Request payloads */
 export type UserInput = {
   name: string;
@@ -513,4 +562,29 @@ export type NoteInput = {
   targetType: NoteTargetType;
   targetId: number;
   authorId?: number | null;
+};
+
+export type FeatureRecordInput = {
+  featureCode: string;
+  title: string;
+  description?: string | null;
+  status?: FeatureStatus;
+  priority?: Priority;
+  ownerId?: number | null;
+  ownerName?: string | null;
+  matterId?: number | null;
+  clientId?: number | null;
+  dueDate?: string | null;
+  amount?: number | null;
+  data?: Record<string, unknown> | null;
+};
+
+export type FeatureRecordQuery = {
+  featureCode?: string;
+  status?: string;
+  search?: string;
+};
+
+export type FeatureQuery = {
+  moduleCode?: string;
 };

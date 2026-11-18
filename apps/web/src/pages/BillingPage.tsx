@@ -14,9 +14,21 @@ import { formatCurrency, formatNumber } from '@/lib/format';
 
 type BillingTab = 'time' | 'expenses' | 'invoices';
 
+/** Route query uses `expense` (singular) while the panel key is `expenses`. */
+function tabFromParams(params: URLSearchParams): BillingTab {
+  const value = params.get('tab');
+  if (value === 'time') return 'time';
+  if (value === 'expense' || value === 'expenses') return 'expenses';
+  return 'invoices';
+}
+
+function tabToParam(tab: BillingTab): string {
+  return tab === 'expenses' ? 'expense' : tab;
+}
+
 export function BillingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<BillingTab>('invoices');
+  const [tab, setTab] = useState<BillingTab>(() => tabFromParams(searchParams));
   const [newInvoice, setNewInvoice] = useState(false);
   const { data: timeEntries } = useTimeEntries();
   const { data: expenses } = useExpenses();
@@ -29,8 +41,17 @@ export function BillingPage() {
       const next = new URLSearchParams(searchParams);
       next.delete('new');
       setSearchParams(next, { replace: true });
+      return;
     }
+    setTab(tabFromParams(searchParams));
   }, [searchParams, setSearchParams]);
+
+  const handleTabChange = (value: BillingTab) => {
+    setTab(value);
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tabToParam(value));
+    setSearchParams(next, { replace: true });
+  };
 
   const unbilledHours = (timeEntries ?? []).filter((item) => !item.invoiced).reduce((sum, item) => sum + item.hours, 0);
   const unbilledExpenses = (expenses ?? []).filter((item) => !item.invoiced).reduce((sum, item) => sum + item.amount, 0);
@@ -63,7 +84,7 @@ export function BillingPage() {
       </Stack>
 
       <Card>
-        <Tabs value={tab} onChange={(_, value: BillingTab) => setTab(value)} sx={{ borderBottom: 1, borderColor: 'divider', px: 1 }}>
+        <Tabs value={tab} onChange={(_, value: BillingTab) => handleTabChange(value)} sx={{ borderBottom: 1, borderColor: 'divider', px: 1 }}>
           <Tab value="time" label="时间记录" />
           <Tab value="expenses" label="费用记录" />
           <Tab value="invoices" label="账单与收款" />

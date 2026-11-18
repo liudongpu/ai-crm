@@ -1,18 +1,21 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import AddOutlined from '@mui/icons-material/AddOutlined';
+import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import AccountBalanceOutlined from '@mui/icons-material/AccountBalanceOutlined';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined';
 import BarChartOutlined from '@mui/icons-material/BarChartOutlined';
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined';
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import EmailOutlined from '@mui/icons-material/EmailOutlined';
+import ExtensionOutlined from '@mui/icons-material/ExtensionOutlined';
 import GavelOutlined from '@mui/icons-material/Gavel';
-import HomeOutlined from '@mui/icons-material/HomeOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsNone from '@mui/icons-material/NotificationsNone';
 import PeopleOutline from '@mui/icons-material/PeopleOutline';
 import PersonOutline from '@mui/icons-material/PersonOutline';
+import PsychologyOutlined from '@mui/icons-material/PsychologyOutlined';
 import ReceiptLongOutlined from '@mui/icons-material/ReceiptLongOutlined';
 import SearchIcon from '@mui/icons-material/Search';
+import SecurityOutlined from '@mui/icons-material/SecurityOutlined';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import AppBar from '@mui/material/AppBar';
 import Avatar from '@mui/material/Avatar';
@@ -39,58 +42,26 @@ import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import { useDashboard, useSearch, useUsers } from '@/hooks/useCrm';
+import { useDashboard, useFeatureCatalog, useSearch, useUsers } from '@/hooks/useCrm';
 import { recordPath, useRecent, type RecentType } from '@/hooks/useRecent';
 import { avatarColor, initials } from '@/lib/format';
+import type { Feature, FeatureCatalog } from '@/types';
 
-const navTabs = [
-  { value: '/', label: '工作台', icon: <HomeOutlined fontSize="small" /> },
-  { value: '/matters', label: '案件', icon: <GavelOutlined fontSize="small" /> },
-  { value: '/clients', label: '客户', icon: <AccountBalanceOutlined fontSize="small" /> },
-  { value: '/contacts', label: '联系人', icon: <PeopleOutline fontSize="small" /> },
-  { value: '/leads', label: '咨询线索', icon: <PersonOutline fontSize="small" /> },
-  { value: '/calendar', label: '日程任务', icon: <CalendarMonthOutlined fontSize="small" /> },
-  { value: '/documents', label: '文档', icon: <DescriptionOutlined fontSize="small" /> },
-  { value: '/billing', label: '计费', icon: <ReceiptLongOutlined fontSize="small" /> },
-  { value: '/trust', label: '信托', icon: <AccountBalanceOutlined fontSize="small" /> },
-  { value: '/communications', label: '沟通', icon: <EmailOutlined fontSize="small" /> },
-  { value: '/reports', label: '报表', icon: <BarChartOutlined fontSize="small" /> },
-  { value: '/settings', label: '设置', icon: <SettingsOutlined fontSize="small" /> },
-];
-
-const sidebarGroups = [
-  {
-    label: '业务管理',
-    items: [
-      { label: '案件管理', to: '/matters', icon: <GavelOutlined fontSize="small" /> },
-      { label: '客户管理', to: '/clients', icon: <AccountBalanceOutlined fontSize="small" /> },
-      { label: '联系人', to: '/contacts', icon: <PeopleOutline fontSize="small" /> },
-      { label: '咨询线索 / Intake', to: '/leads', icon: <PersonOutline fontSize="small" /> },
-    ],
-  },
-  {
-    label: '日程与文档',
-    items: [
-      { label: '日程与任务', to: '/calendar', icon: <CalendarMonthOutlined fontSize="small" /> },
-      { label: '案件文档', to: '/documents', icon: <DescriptionOutlined fontSize="small" /> },
-      { label: '沟通记录', to: '/communications', icon: <EmailOutlined fontSize="small" /> },
-    ],
-  },
-  {
-    label: '财务',
-    items: [
-      { label: '时间与账单', to: '/billing', icon: <ReceiptLongOutlined fontSize="small" /> },
-      { label: '信托账户', to: '/trust', icon: <AccountBalanceOutlined fontSize="small" /> },
-    ],
-  },
-  {
-    label: '分析与设置',
-    items: [
-      { label: '运营报表', to: '/reports', icon: <BarChartOutlined fontSize="small" /> },
-      { label: '系统设置', to: '/settings', icon: <SettingsOutlined fontSize="small" /> },
-    ],
-  },
-];
+/** One icon per primary module; reused by both the top tabs and the sidebar. */
+const moduleIcons: Record<string, ReactElement> = {
+  grow: <PersonOutline fontSize="small" />,
+  manage: <GavelOutlined fontSize="small" />,
+  calendar: <CalendarMonthOutlined fontSize="small" />,
+  draft: <DescriptionOutlined fontSize="small" />,
+  communicate: <EmailOutlined fontSize="small" />,
+  billing: <ReceiptLongOutlined fontSize="small" />,
+  accounting: <AccountBalanceOutlined fontSize="small" />,
+  work_ai: <PsychologyOutlined fontSize="small" />,
+  reports: <BarChartOutlined fontSize="small" />,
+  automation: <AutoAwesomeOutlined fontSize="small" />,
+  integrations: <ExtensionOutlined fontSize="small" />,
+  security: <SecurityOutlined fontSize="small" />,
+};
 
 const createMenu = [
   { label: '新案件', to: '/matters?new=1' },
@@ -119,6 +90,67 @@ type SearchItem = {
   company?: string | null;
   email?: string | null;
 };
+
+type Navigation = { module?: FeatureCatalog; feature?: Feature };
+
+/** Base path of a feature route, without any query string (e.g. /billing?tab=time -> /billing). */
+function baseRoute(feature: Feature): string {
+  return feature.route.split('?')[0] ?? feature.route;
+}
+
+/** The first secondary feature of a module is its canonical landing route. */
+function moduleHref(module: FeatureCatalog): string {
+  const first = [...module.features].sort((a, b) => a.position - b.position)[0];
+  return first?.route ?? '/';
+}
+
+function matchesFeature(feature: Feature, pathname: string): boolean {
+  const code = pathname.match(/^\/features\/([^/]+)\/?$/)?.[1];
+  if (code) return feature.code === code;
+
+  const base = baseRoute(feature);
+  return base === pathname || (base !== '/' && pathname.startsWith(`${base}/`));
+}
+
+/**
+ * Resolve the active primary module / secondary feature from the current URL.
+ * `/features/:code` matches by code exactly; other paths use a segment-aware
+ * route prefix match, longest route first. Query `tab` breaks ties for the
+ * billing features that all share `/billing` as their base route.
+ */
+function resolveNavigation(modules: FeatureCatalog[], pathname: string, search: string): Navigation {
+  const entries = modules.flatMap((module) =>
+    [...module.features]
+      .sort((a, b) => a.position - b.position)
+      .map((feature) => ({ module, feature })),
+  );
+
+  const featureCode = pathname.match(/^\/features\/([^/]+)\/?$/)?.[1];
+  if (featureCode) {
+    const exact = entries.find((entry) => entry.feature.code === featureCode);
+    if (exact) return exact;
+  }
+
+  const candidates = entries
+    .filter(({ feature }) => matchesFeature(feature, pathname))
+    .sort((a, b) => baseRoute(b.feature).length - baseRoute(a.feature).length);
+
+  if (candidates.length > 1) {
+    const tab = new URLSearchParams(search).get('tab');
+    if (tab) {
+      const tabMatch = candidates.find(({ feature }) => {
+        const routeTab = new URLSearchParams(feature.route.split('?')[1] ?? '').get('tab');
+        return routeTab === tab;
+      });
+      if (tabMatch) return tabMatch;
+    }
+  }
+
+  if (candidates.length > 0) return candidates[0];
+
+  // At "/" the dashboard belongs to reports; anywhere else keep a sensible default.
+  return { module: modules.find((module) => module.code === 'reports') ?? modules[0] };
+}
 
 function GlobalSearch() {
   const [value, setValue] = useState('');
@@ -221,35 +253,53 @@ function GlobalSearch() {
   );
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({
+  active,
+  catalogError,
+  onNavigate,
+}: {
+  active: Navigation;
+  catalogError: boolean;
+  onNavigate?: () => void;
+}) {
   const recent = useRecent();
-  const { pathname } = useLocation();
+  const features = active.module
+    ? [...active.module.features].sort((a, b) => a.position - b.position)
+    : [];
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#f9fafb' }}>
       <Box sx={{ p: 1.5, overflowY: 'auto' }}>
-        {sidebarGroups.map((group) => (
-          <Box key={group.label} sx={{ mb: 1.5 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: 0.6, px: 1 }}>
-              {group.label}
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: 0.6, px: 1 }}>
+          {active.module?.name ?? '功能导航'}
+        </Typography>
+        <List dense disablePadding sx={{ mt: 0.5 }}>
+          {features.map((feature) => (
+            <ListItemButton
+              key={feature.code}
+              component={RouterLink}
+              to={feature.route}
+              onClick={onNavigate}
+              selected={active.feature?.code === feature.code}
+              sx={{ borderRadius: 1, mb: 0.25, py: 0.6, '&.Mui-selected': { bgcolor: '#e8edf4', color: 'primary.main' } }}
+            >
+              <ListItemIcon sx={{ minWidth: 32, color: 'inherit' }}>
+                {moduleIcons[active.module?.code ?? ''] ?? <GavelOutlined fontSize="small" />}
+              </ListItemIcon>
+              <ListItemText primary={feature.name} primaryTypographyProps={{ variant: 'body2', noWrap: true }} />
+            </ListItemButton>
+          ))}
+          {catalogError && (
+            <Typography variant="caption" color="error" sx={{ px: 1, display: 'block', py: 1 }}>
+              功能目录加载失败，请刷新重试
             </Typography>
-            <List dense disablePadding sx={{ mt: 0.5 }}>
-              {group.items.map((item) => (
-                <ListItemButton
-                  key={item.to}
-                  component={RouterLink}
-                  to={item.to}
-                  onClick={onNavigate}
-                  selected={pathname.startsWith(item.to)}
-                  sx={{ borderRadius: 1, mb: 0.25, py: 0.6, '&.Mui-selected': { bgcolor: '#e8edf4', color: 'primary.main' } }}
-                >
-                  <ListItemIcon sx={{ minWidth: 32, color: 'inherit' }}>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.label} primaryTypographyProps={{ variant: 'body2', noWrap: true }} />
-                </ListItemButton>
-              ))}
-            </List>
-          </Box>
-        ))}
+          )}
+          {!catalogError && features.length === 0 && (
+            <Typography variant="caption" color="text.disabled" sx={{ px: 1, display: 'block', py: 1 }}>
+              暂无二级功能
+            </Typography>
+          )}
+        </List>
 
         <Divider sx={{ my: 1.5 }} />
         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: 0.6, px: 1 }}>
@@ -284,13 +334,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { data: dashboard } = useDashboard();
   const { data: users } = useUsers();
+  const { data: catalog, isError: catalogError } = useFeatureCatalog();
+  const modules = useMemo(
+    () => [...(catalog ?? [])].sort((a, b) => a.position - b.position),
+    [catalog],
+  );
+  const active = useMemo(
+    () => resolveNavigation(modules, location.pathname, location.search),
+    [modules, location.pathname, location.search],
+  );
   const currentUser = users?.[0];
   const dueCount = dashboard?.metrics.tasksDue ?? 0;
   const [createAnchor, setCreateAnchor] = useState<HTMLElement | null>(null);
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const activeTab = navTabs.find((tab) => tab.value !== '/' && location.pathname.startsWith(tab.value))?.value ?? '/';
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -329,14 +386,23 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <Paper square elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider', position: 'sticky', top: 56, zIndex: 10 }}>
         <Tabs
-          value={activeTab}
+          value={active.module?.code ?? ''}
           variant="scrollable"
           scrollButtons="auto"
-          onChange={(_, value: string) => navigate(value)}
+          onChange={(_, value: string) => {
+            const target = modules.find((module) => module.code === value);
+            if (target) navigate(moduleHref(target));
+          }}
           sx={{ px: { md: 2 } }}
         >
-          {navTabs.map((tab) => (
-            <Tab key={tab.value} value={tab.value} label={tab.label} icon={tab.icon} iconPosition="start" />
+          {modules.map((module) => (
+            <Tab
+              key={module.code}
+              value={module.code}
+              label={module.name}
+              icon={moduleIcons[module.code] ?? <GavelOutlined fontSize="small" />}
+              iconPosition="start"
+            />
           ))}
         </Tabs>
       </Paper>
@@ -362,7 +428,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Menu>
 
       <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} sx={{ display: { md: 'none' } }} PaperProps={{ sx: { width: 240 } }}>
-        <SidebarContent onNavigate={() => setMobileOpen(false)} />
+        <SidebarContent active={active} catalogError={catalogError} onNavigate={() => setMobileOpen(false)} />
       </Drawer>
 
       <Box sx={{ display: 'flex', alignItems: 'stretch' }}>
@@ -377,7 +443,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             minHeight: 'calc(100vh - 100px)',
           }}
         >
-          <SidebarContent />
+          <SidebarContent active={active} catalogError={catalogError} />
         </Box>
         <Box component="main" sx={{ flexGrow: 1, minWidth: 0, p: { xs: 1.5, md: 2.5 } }}>
           {children}
