@@ -1,68 +1,63 @@
 import { PartialType } from '@nestjs/mapped-types';
 import {
+  IsBoolean,
   IsEmail,
-  IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
-  IsPositive,
   IsString,
   MaxLength,
 } from 'class-validator';
+import { LEAD_RATINGS, LEAD_STATUSES, LeadRating, LeadStatus } from '../../database/entities';
 
 export class CreateLeadDto {
   @IsString()
   @MaxLength(120)
   name: string;
 
-  @IsString()
-  @MaxLength(180)
-  company: string;
-
   @IsOptional()
   @IsString()
-  @MaxLength(120)
-  title?: string | null;
+  company?: string;
 
   @IsOptional()
   @IsEmail()
-  email?: string | null;
+  email?: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(60)
-  phone?: string | null;
-
-  @IsOptional()
-  @IsEnum(['new', 'working', 'qualified', 'converted', 'unqualified'])
-  status?: 'new' | 'working' | 'qualified' | 'converted' | 'unqualified';
+  phone?: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(120)
-  source?: string | null;
-
-  @IsOptional()
-  @IsEnum(['hot', 'warm', 'cold'])
-  rating?: 'hot' | 'warm' | 'cold';
+  source?: string;
 
   @IsOptional()
   @IsString()
-  description?: string | null;
+  practiceArea?: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(120)
-  owner?: string;
+  description?: string;
+
+  @IsOptional()
+  @IsIn(LEAD_STATUSES)
+  status?: LeadStatus;
+
+  @IsOptional()
+  @IsIn(LEAD_RATINGS)
+  rating?: LeadRating;
+
+  @IsOptional()
+  @IsBoolean()
+  conflictChecked?: boolean;
+
+  @IsOptional()
+  @IsIn(['clear', 'conflict'])
+  conflictResult?: 'clear' | 'conflict';
 
   @IsOptional()
   @IsInt()
-  @IsPositive()
-  convertedContactId?: number | null;
-
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  convertedDealId?: number | null;
+  ownerId?: number;
 }
 
 export class UpdateLeadDto extends PartialType(CreateLeadDto) {}

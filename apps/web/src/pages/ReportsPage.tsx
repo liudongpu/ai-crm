@@ -1,32 +1,19 @@
-import { useState, type ReactNode } from 'react';
-import AssessmentOutlined from '@mui/icons-material/AssessmentOutlined';
-import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined';
-import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined';
-import TrendingUpOutlined from '@mui/icons-material/TrendingUpOutlined';
-import Avatar from '@mui/material/Avatar';
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import ButtonGroup from '@mui/material/ButtonGroup';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
-import FormControl from '@mui/material/FormControl';
-import LinearProgress from '@mui/material/LinearProgress';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
-import Skeleton from '@mui/material/Skeleton';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
+import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -35,228 +22,196 @@ import {
   YAxis,
 } from 'recharts';
 import { PageHeader } from '@/components/common/PageHeader';
+import { EmptyState, ErrorState, LoadingCards, LoadingPanel } from '@/components/common/States';
 import { useReports } from '@/hooks/useCrm';
-import { formatCurrency } from '@/lib/format';
-import { activityMeta, leadStatusMeta } from '@/lib/meta';
-import type { ActivityType, LeadStatus } from '@/types';
+import { formatCurrency, formatNumber } from '@/lib/format';
 
-const COLORS = ['#0176d3', '#2e844a', '#c75a00', '#7060d8', '#ba0517', '#057d8e'];
+const PIE_COLORS = ['#1b365d', '#b8860b', '#2f7a55', '#5a5f9e', '#b4443c', '#2c6b8f'];
 
-function StatCard({ label, value, hint, icon, color }: { label: string; value: string; hint: string; icon: ReactNode; color: string }) {
-  return (
-    <Card>
-      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
-        <Avatar sx={{ bgcolor: `${color}18`, color, width: 44, height: 44 }}>{icon}</Avatar>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="body2" color="text.secondary">{label}</Typography>
-          <Typography variant="h5" fontWeight={700}>{value}</Typography>
-          <Typography variant="caption" color="text.secondary">{hint}</Typography>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-}
+const metricCards = [
+  { key: 'revenue', label: '收入', format: (value: number) => formatCurrency(value, true) },
+  { key: 'collected', label: '已收款', format: (value: number) => formatCurrency(value, true) },
+  { key: 'outstanding', label: '未收款', format: (value: number) => formatCurrency(value, true) },
+  { key: 'trustBalance', label: '信托余额', format: (value: number) => formatCurrency(value, true) },
+  { key: 'openMatters', label: '进行中案件', format: (value: number) => String(value) },
+  { key: 'closedMatters', label: '已结案', format: (value: number) => String(value) },
+  { key: 'realizationRate', label: '实现率', format: (value: number) => `${formatNumber(value)}%` },
+  { key: 'utilizationRate', label: '利用率', format: (value: number) => `${formatNumber(value)}%` },
+  { key: 'collectionRate', label: '收款率', format: (value: number) => `${formatNumber(value)}%` },
+  { key: 'leads', label: '咨询线索', format: (value: number) => String(value) },
+  { key: 'convertedLeads', label: '已转换线索', format: (value: number) => String(value) },
+] as const;
 
 export function ReportsPage() {
   const [days, setDays] = useState(90);
-  const { data, isLoading } = useReports(days);
-
-  if (isLoading || !data) {
-    return (
-      <Box>
-        <Skeleton variant="text" width={280} height={40} />
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, mt: 2 }}>
-          {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} variant="rounded" height={100} />)}
-        </Box>
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, mt: 2 }}>
-          <Skeleton variant="rounded" height={340} /><Skeleton variant="rounded" height={340} />
-        </Box>
-      </Box>
-    );
-  }
-
-  const { metrics, dealsByStage, wonByMonth, activitiesByType, dealsByOwner, leadsByStatus, topAccounts } = data;
-  const pieData = activitiesByType.map((item) => ({
-    name: activityMeta[item.type as ActivityType]?.label ?? item.type,
-    value: item.count,
-    color: activityMeta[item.type as ActivityType]?.color ?? COLORS[0],
-  }));
-  const leadData = leadsByStatus.map((item) => ({
-    ...item,
-    label: leadStatusMeta[item.status as LeadStatus]?.label ?? item.status,
-  }));
+  const { data: report, isLoading, isError, error, refetch } = useReports(days);
 
   return (
     <Box>
       <PageHeader
-        title="销售报表"
-        subtitle="从商机、线索与活动多维角度分析销售表现"
+        title="运营报表"
+        subtitle="案件、收入、工时与线索转化分析"
         actions={
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <Select value={days} onChange={(event) => setDays(Number(event.target.value))}>
-              <MenuItem value={30}>最近 30 天</MenuItem>
-              <MenuItem value={90}>最近 90 天</MenuItem>
-              <MenuItem value={365}>最近 12 个月</MenuItem>
-            </Select>
-          </FormControl>
+          <ButtonGroup size="small">
+            {[30, 90, 180, 365].map((value) => (
+              <Button key={value} variant={days === value ? 'contained' : 'outlined'} onClick={() => setDays(value)}>
+                {value} 天
+              </Button>
+            ))}
+          </ButtonGroup>
         }
       />
 
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
-        <StatCard label="在途商机金额" value={formatCurrency(metrics.pipelineValue, true)} hint={`${metrics.openDeals} 个进行中商机`} icon={<TrendingUpOutlined />} color="#0176d3" />
-        <StatCard label="赢单金额" value={formatCurrency(metrics.wonValue, true)} hint={`${metrics.wonDeals} 笔成交`} icon={<EmojiEventsOutlined />} color="#2e844a" />
-        <StatCard label="商机胜率" value={`${metrics.winRate}%`} hint={`赢 ${metrics.wonDeals} / 输 ${metrics.lostDeals}`} icon={<AssessmentOutlined />} color="#7060d8" />
-        <StatCard label="线索转化" value={String(metrics.convertedLeads)} hint={`共 ${metrics.leads} 条潜在客户`} icon={<AutoAwesomeOutlined />} color="#c75a00" />
-      </Box>
+      {isError && <ErrorState message={error?.message ?? '报表加载失败'} onRetry={() => void refetch()} />}
+      {isLoading && (
+        <Box>
+          <LoadingCards count={8} />
+          <Box sx={{ mt: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>
+            <LoadingPanel height={320} />
+            <LoadingPanel height={320} />
+          </Box>
+        </Box>
+      )}
+      {!isLoading && !isError && !report && <EmptyState title="暂无报表数据" />}
 
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, mt: 2 }}>
-        <Card>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography variant="h6">赢单金额趋势</Typography>
-            <Typography variant="caption" color="text.secondary">按预计成交月份统计</Typography>
-            <Box sx={{ height: 280, mt: 1 }}>
-              {wonByMonth.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={wonByMonth} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="wonGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0176d3" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#0176d3" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ecebea" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#706e6b' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: '#9a9a9a' }} axisLine={false} tickLine={false} tickFormatter={(value: number) => `${Math.round(value / 10000)}万`} />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={{ borderRadius: 6, border: '1px solid #e5e5e5', fontSize: 12 }} />
-                    <Area type="monotone" dataKey="value" stroke="#0176d3" strokeWidth={2} fill="url(#wonGradient)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ pt: 8, textAlign: 'center' }}>该时间段暂无赢单数据</Typography>
-              )}
-            </Box>
-          </CardContent>
-        </Card>
+      {!isLoading && !isError && report && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' } }}>
+            {metricCards.map((card) => (
+              <Card key={card.key}>
+                <CardContent sx={{ py: 1.5, px: 2 }}>
+                  <Typography variant="caption" color="text.secondary">{card.label}</Typography>
+                  <Typography variant="h6" sx={{ mt: 0.5, fontWeight: 700 }}>{card.format(report.metrics[card.key] ?? 0)}</Typography>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
 
-        <Card>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography variant="h6">销售漏斗</Typography>
-            <Typography variant="caption" color="text.secondary">各阶段商机金额</Typography>
-            <Box sx={{ height: 280 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dealsByStage} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
-                  <XAxis type="number" tick={{ fontSize: 10, fill: '#9a9a9a' }} axisLine={false} tickLine={false} tickFormatter={(value: number) => `${Math.round(value / 10000)}万`} />
-                  <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: '#706e6b' }} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={{ borderRadius: 6, border: '1px solid #e5e5e5', fontSize: 12 }} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22}>
-                    {dealsByStage.map((stage) => <Cell key={stage.id} fill={stage.color} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' } }}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>月度收入趋势</Typography>
+                {report.revenueByMonth.length === 0 ? (
+                  <EmptyState title="暂无收入数据" />
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart data={report.revenueByMonth} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="month" fontSize={12} />
+                      <YAxis fontSize={12} tickFormatter={(value: number) => `${Math.round(value / 10000)}万`} />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                      <Legend />
+                      <Line type="monotone" dataKey="value" name="收入" stroke="#1b365d" strokeWidth={2} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
 
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, mt: 2 }}>
-        <Card>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography variant="h6">活动分布</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', height: 260 }}>
-              {pieData.length ? (
-                <>
-                  <Box sx={{ width: '50%', height: 220 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={pieData} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={3} stroke="none">
-                          {pieData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
-                        </Pie>
-                        <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid #e5e5e5', fontSize: 12 }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
-                  <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {pieData.map((entry) => (
-                      <Box key={entry.name} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: entry.color }} />
-                        <Typography variant="caption" color="text.secondary" sx={{ flexGrow: 1 }}>{entry.name}</Typography>
-                        <Typography variant="caption" fontWeight={700}>{entry.value}</Typography>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>线索来源</Typography>
+                {report.leadsBySource.length === 0 ? (
+                  <EmptyState title="暂无线索数据" />
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie data={report.leadsBySource} dataKey="count" nameKey="source" cx="50%" cy="50%" outerRadius={90} label>
+                        {report.leadsBySource.map((entry, index) => (
+                          <Cell key={entry.source} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
+
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>执业领域案件分布</Typography>
+                {report.mattersByPracticeArea.length === 0 ? (
+                  <EmptyState title="暂无案件数据" />
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={report.mattersByPracticeArea} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="area" fontSize={12} />
+                      <YAxis fontSize={12} />
+                      <Tooltip />
+                      <Bar dataKey="count" name="案件数" fill="#1b365d" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>人员工时与金额</Typography>
+                {report.timeByUser.length === 0 ? (
+                  <EmptyState title="暂无工时数据" />
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={report.timeByUser} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" fontSize={12} />
+                      <YAxis fontSize={12} />
+                      <Tooltip formatter={(value, name) => (name === '金额' ? formatCurrency(Number(value)) : `${value} 小时`)} />
+                      <Legend />
+                      <Bar dataKey="hours" name="工时" fill="#b8860b" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="amount" name="金额" fill="#2c6b8f" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
+
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>重点客户</Typography>
+                {(report.topClients ?? []).length === 0 ? (
+                  <EmptyState title="暂无客户数据" />
+                ) : (
+                  <Stack spacing={1}>
+                    {report.topClients.map((client) => (
+                      <Box key={client.name} sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid', borderColor: 'divider', pb: 0.75 }}>
+                        <Typography variant="body2">{client.name} · {client.matters} 个案件</Typography>
+                        <Typography variant="body2" fontWeight={600}>{formatCurrency(client.value, true)}</Typography>
                       </Box>
                     ))}
-                  </Box>
-                </>
-              ) : <Typography variant="body2" color="text.secondary" sx={{ width: '100%', textAlign: 'center' }}>暂无活动</Typography>}
-            </Box>
-          </CardContent>
-        </Card>
+                  </Stack>
+                )}
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography variant="h6">负责人业绩</Typography>
-            <Typography variant="caption" color="text.secondary">按联系人负责人关联商机统计</Typography>
-            <Box sx={{ height: 260, mt: 1 }}>
-              {dealsByOwner.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dealsByOwner} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-                    <XAxis dataKey="owner" tick={{ fontSize: 11, fill: '#706e6b' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#9a9a9a' }} axisLine={false} tickLine={false} tickFormatter={(value: number) => `${Math.round(value / 10000)}万`} />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={{ borderRadius: 6, border: '1px solid #e5e5e5', fontSize: 12 }} />
-                    <Bar dataKey="value" fill="#0176d3" radius={[4, 4, 0, 0]} maxBarSize={36} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : <Typography variant="body2" color="text.secondary" sx={{ pt: 8, textAlign: 'center' }}>暂无数据</Typography>}
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography variant="h6">潜在客户状态</Typography>
-            <Typography variant="caption" color="text.secondary">线索管道概览</Typography>
-            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {leadData.map((item) => {
-                const total = leadsByStatus.reduce((sum, row) => sum + row.count, 0) || 1;
-                const percent = Math.round((item.count / total) * 100);
-                return (
-                  <Box key={item.status}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Chip size="small" variant="outlined" color={leadStatusMeta[item.status as LeadStatus]?.color} label={item.label} />
-                      <Typography variant="caption" fontWeight={700}>{item.count} 条 · {percent}%</Typography>
-                    </Box>
-                    <LinearProgress variant="determinate" value={percent} color="primary" sx={{ height: 6, borderRadius: 3 }} />
-                  </Box>
-                );
-              })}
-              {!leadData.length && <Typography variant="body2" color="text.secondary">暂无潜在客户</Typography>}
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
-
-      <Card sx={{ mt: 2 }}>
-        <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="h6">重点客户</Typography>
-          <Typography variant="caption" color="text.secondary">按商机金额排名</Typography>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>事项类型统计</Typography>
+                {(report.tasksByType ?? []).length === 0 ? (
+                  <EmptyState title="暂无事项数据" />
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={report.tasksByType} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="type" fontSize={12} />
+                      <YAxis fontSize={12} />
+                      <Tooltip />
+                      <Bar dataKey="count" name="数量" fill="#5a5f9e" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
         </Box>
-        <Table size="small">
-          <TableHead><TableRow><TableCell>排名</TableCell><TableCell>客户名称</TableCell><TableCell align="right">商机数量</TableCell><TableCell align="right">商机金额</TableCell></TableRow></TableHead>
-          <TableBody>
-            {topAccounts.map((account, index) => (
-              <TableRow key={account.name}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>{account.name}</TableCell>
-                <TableCell align="right">{account.deals}</TableCell>
-                <TableCell align="right">{formatCurrency(account.value, true)}</TableCell>
-              </TableRow>
-            ))}
-            {topAccounts.length === 0 && <TableRow><TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>暂无数据</TableCell></TableRow>}
-          </TableBody>
-        </Table>
-      </Card>
-
-      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <Button variant="outlined" onClick={() => window.print()}>打印报表</Button>
-      </Box>
+      )}
     </Box>
   );
 }

@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ArrowUpward from '@mui/icons-material/ArrowUpward';
-import BriefcaseOutline from '@mui/icons-material/WorkOutline';
-import CalendarClockOutlined from '@mui/icons-material/ScheduleOutlined';
-import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
+import AccountBalanceOutlined from '@mui/icons-material/AccountBalanceOutlined';
+import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined';
+import GavelOutlined from '@mui/icons-material/Gavel';
 import PeopleOutline from '@mui/icons-material/PeopleOutline';
-import Refresh from '@mui/icons-material/Refresh';
+import PersonOutline from '@mui/icons-material/PersonOutline';
+import ReceiptLongOutlined from '@mui/icons-material/ReceiptLongOutlined';
+import RefreshOutlined from '@mui/icons-material/Refresh';
+import ScheduleOutlined from '@mui/icons-material/ScheduleOutlined';
+import TrendingUpOutlined from '@mui/icons-material/TrendingUpOutlined';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -13,14 +16,16 @@ import ButtonBase from '@mui/material/ButtonBase';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
-import LinearProgress from '@mui/material/LinearProgress';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -29,10 +34,11 @@ import {
   YAxis,
 } from 'recharts';
 import { PageHeader } from '@/components/common/PageHeader';
+import { EmptyState, ErrorState, LoadingCards } from '@/components/common/States';
 import { useDashboard } from '@/hooks/useCrm';
-import { avatarColor, formatCurrency, formatDateTime, initials, todayLabel } from '@/lib/format';
-import { activityMeta, dealStatusMeta } from '@/lib/meta';
-import type { ActivityType } from '@/types';
+import { avatarColor, formatCurrency, formatDate, formatNumber, initials, todayLabel } from '@/lib/format';
+import { taskTypeLabel } from '@/lib/meta';
+import type { DashboardSummary } from '@/types';
 
 function MetricCard({
   label,
@@ -52,10 +58,10 @@ function MetricCard({
   return (
     <Card sx={{ height: '100%' }}>
       <ButtonBase onClick={onClick} sx={{ width: '100%', p: 2, justifyContent: 'flex-start', textAlign: 'left', borderRadius: 2 }}>
-        <Avatar sx={{ bgcolor: `${color}18`, color, width: 44, height: 44, mr: 2 }}>{icon}</Avatar>
+        <Avatar sx={{ bgcolor: `${color}18`, color, width: 40, height: 40, mr: 1.5 }}>{icon}</Avatar>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="body2" color="text.secondary">{label}</Typography>
-          <Typography variant="h5" sx={{ mt: 0.25, fontWeight: 700 }}>{value}</Typography>
+          <Typography variant="h6" sx={{ mt: 0.25, fontWeight: 700, fontSize: '1.2rem' }}>{value}</Typography>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>{hint}</Typography>
         </Box>
       </ButtonBase>
@@ -63,114 +69,116 @@ function MetricCard({
   );
 }
 
+function DashboardSkeleton() {
+  return (
+    <Box>
+      <Skeleton variant="text" width={280} height={42} />
+      <Box sx={{ mt: 2 }}><LoadingCards count={8} /></Box>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, mt: 2 }}>
+        <Skeleton variant="rounded" height={320} />
+        <Skeleton variant="rounded" height={320} />
+      </Box>
+    </Box>
+  );
+}
+
 export function DashboardPage() {
-  const { data, isLoading, isFetching, refetch } = useDashboard();
+  const { data, isLoading, isFetching, isError, error, refetch } = useDashboard();
   const navigate = useNavigate();
 
-  if (isLoading || !data) {
+  if (isLoading) return <DashboardSkeleton />;
+  if (isError || !data) {
     return (
       <Box>
-        <Skeleton variant="text" width={320} height={40} />
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, mt: 2 }}>
-          {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} variant="rounded" height={110} />)}
-        </Box>
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, mt: 2 }}>
-          <Skeleton variant="rounded" height={320} />
-          <Skeleton variant="rounded" height={320} />
-        </Box>
+        <PageHeader title="律所工作台" subtitle={todayLabel()} />
+        <ErrorState message={error?.message ?? '工作台数据加载失败'} onRetry={() => void refetch()} />
       </Box>
     );
   }
 
-  const { metrics, dealsByStage, activitiesByType, recentDeals, upcomingActivities } = data;
-  const pieData = activitiesByType.map((item) => ({
-    name: activityMeta[item.type as ActivityType]?.label ?? item.type,
-    value: item.count,
-    color: activityMeta[item.type as ActivityType]?.color ?? '#706e6b',
-  }));
+  const { metrics, mattersByStage, tasksByType, recentMatters, upcomingTasks, revenueByMonth } = data as DashboardSummary;
+  const pieData = tasksByType.map((item) => ({ name: taskTypeLabel(item.type), value: item.count }));
+  const pieColors = ['#1b365d', '#b8860b', '#2f7a55', '#b4443c', '#2c6b8f', '#8a6808'];
 
   return (
     <Box>
       <PageHeader
-        title="早上好，李明"
-        subtitle={`${todayLabel()} · 这是你今天的销售工作台`}
+        title="律所工作台"
+        subtitle={`${todayLabel()} · 案件、截止日期与财务概览`}
         actions={
           <>
-            <Chip size="small" color="success" variant="outlined" icon={<CheckCircleOutline />} label="数据实时同步" />
-            <Button size="small" startIcon={<Refresh />} onClick={() => refetch()} disabled={isFetching}>刷新</Button>
+            <Chip size="small" variant="outlined" color="success" label="数据已同步" />
+            <Button size="small" startIcon={<RefreshOutlined />} onClick={() => void refetch()} disabled={isFetching}>刷新</Button>
           </>
         }
       />
 
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
-        <MetricCard label="进行中商机" value={String(metrics.openDeals)} hint={`预计金额 ${formatCurrency(metrics.pipelineValue, true)}`} icon={<BriefcaseOutline />} color="#0176d3" onClick={() => navigate('/opportunities')} />
-        <MetricCard label="赢单金额" value={formatCurrency(metrics.wonValue, true)} hint={`已成交 ${metrics.wonDeals} 笔 · 胜率 ${metrics.winRate}%`} icon={<ArrowUpward />} color="#2e844a" onClick={() => navigate('/reports')} />
-        <MetricCard label="待处理活动" value={String(metrics.activitiesDue)} hint="含今天到期及逾期任务" icon={<CalendarClockOutlined />} color="#c75a00" onClick={() => navigate('/activities')} />
-        <MetricCard label="客户资源" value={String(metrics.contacts)} hint={`覆盖 ${metrics.companies} 家客户公司`} icon={<PeopleOutline />} color="#7060d8" onClick={() => navigate('/contacts')} />
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
+        <MetricCard label="进行中案件" value={String(metrics.openMatters)} hint={`已结案 ${metrics.closedMatters} 件`} icon={<GavelOutlined />} color="#1b365d" onClick={() => navigate('/matters')} />
+        <MetricCard label="活跃客户" value={String(metrics.activeClients)} hint={`咨询线索 ${metrics.leads} 条`} icon={<PeopleOutline />} color="#2f7a55" onClick={() => navigate('/clients')} />
+        <MetricCard label="待办事项" value={String(metrics.tasksDue)} hint="含逾期截止日期与庭审" icon={<CalendarMonthOutlined />} color="#b8860b" onClick={() => navigate('/calendar')} />
+        <MetricCard label="本月收入" value={formatCurrency(metrics.revenueThisMonth, true)} hint={`应收 ${formatCurrency(metrics.outstandingAmount, true)}`} icon={<TrendingUpOutlined />} color="#b4443c" onClick={() => navigate('/reports')} />
+        <MetricCard label="未开票工时" value={`${formatNumber(metrics.unbilledHours)} h`} hint={`可计费 ${formatCurrency(metrics.unbilledAmount, true)}`} icon={<ScheduleOutlined />} color="#2c6b8f" onClick={() => navigate('/billing')} />
+        <MetricCard label="未结账单" value={String(metrics.outstandingInvoices)} hint={`应收 ${formatCurrency(metrics.outstandingAmount, true)}`} icon={<ReceiptLongOutlined />} color="#8a6808" onClick={() => navigate('/billing')} />
+        <MetricCard label="信托余额" value={formatCurrency(metrics.trustBalance, true)} hint="客户预付款与代管款项" icon={<AccountBalanceOutlined />} color="#1b365d" onClick={() => navigate('/trust')} />
+        <MetricCard label="新咨询线索" value={String(metrics.leads)} hint="待评估与转化" icon={<PersonOutline />} color="#b8860b" onClick={() => navigate('/leads')} />
       </Box>
 
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, mt: 2 }}>
         <Card>
-          <CardContent sx={{ p: 2.5 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-              <Box>
-                <Typography variant="h6">销售漏斗</Typography>
-                <Typography variant="caption" color="text.secondary">各阶段商机数量与金额分布</Typography>
-              </Box>
-              <Button size="small" onClick={() => navigate('/opportunities')}>查看全部</Button>
-            </Stack>
-            <Box sx={{ height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dealsByStage} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#706e6b' }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#9a9a9a' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    cursor={{ fill: '#f7f7f7' }}
-                    formatter={(value, name) => {
-                      const stage = dealsByStage.find((item) => item.name === name);
-                      return [`${value ?? 0} 笔 · ${formatCurrency(stage?.value ?? 0, true)}`, '商机'];
-                    }}
-                    contentStyle={{ borderRadius: 6, border: '1px solid #e5e5e5', fontSize: 12 }}
-                  />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={44}>
-                    {dealsByStage.map((stage) => <Cell key={stage.id} fill={stage.color} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+          <CardContent sx={{ p: 2 }}>
+            <Typography variant="h6">案件阶段分布</Typography>
+            <Typography variant="caption" color="text.secondary">各阶段案件数量与标的金额</Typography>
+            <Box sx={{ height: 270, mt: 1 }}>
+              {mattersByStage.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={mattersByStage} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9edf2" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      cursor={{ fill: '#f4f6f8' }}
+                      formatter={(value, _name, item) => [`${value ?? 0} 件 · ${formatCurrency(item.payload?.value ?? 0, true)}`, '案件']}
+                      contentStyle={{ borderRadius: 6, border: '1px solid #dfe4ea', fontSize: 12 }}
+                    />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={44}>
+                      {mattersByStage.map((stage) => <Cell key={stage.id} fill={stage.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <EmptyState title="暂无案件数据" />}
             </Box>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography variant="h6">活动分布</Typography>
-            <Typography variant="caption" color="text.secondary">全部跟进活动的类型占比</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: 260 }}>
+          <CardContent sx={{ p: 2 }}>
+            <Typography variant="h6">任务类型</Typography>
+            <Typography variant="caption" color="text.secondary">待办与庭审事项构成</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: 270 }}>
               {pieData.length ? (
                 <>
-                  <Box sx={{ width: '48%', height: 200, minWidth: 120 }}>
+                  <Box sx={{ width: '48%', height: 210, minWidth: 110 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={pieData} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={3} stroke="none">
-                          {pieData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
+                        <Pie data={pieData} dataKey="value" innerRadius={50} outerRadius={76} paddingAngle={3} stroke="none">
+                          {pieData.map((entry, index) => <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />)}
                         </Pie>
-                        <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid #e5e5e5', fontSize: 12 }} />
+                        <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid #dfe4ea', fontSize: 12 }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </Box>
-                  <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {pieData.map((entry) => (
-                      <Box key={entry.name} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 12 }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: entry.color }} />
+                  <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                    {pieData.map((entry, index) => (
+                      <Stack key={entry.name} direction="row" alignItems="center" spacing={1}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: pieColors[index % pieColors.length] }} />
                         <Typography variant="caption" color="text.secondary" sx={{ flexGrow: 1 }}>{entry.name}</Typography>
                         <Typography variant="caption" fontWeight={700}>{entry.value}</Typography>
-                      </Box>
+                      </Stack>
                     ))}
                   </Box>
                 </>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ width: '100%', textAlign: 'center' }}>暂无活动数据</Typography>
-              )}
+              ) : <Typography variant="body2" color="text.secondary" sx={{ width: '100%', textAlign: 'center' }}>暂无任务数据</Typography>}
             </Box>
           </CardContent>
         </Card>
@@ -178,66 +186,92 @@ export function DashboardPage() {
 
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, mt: 2 }}>
         <Card>
-          <Box sx={{ px: 2.5, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="h6">最近商机</Typography>
-            <Button size="small" onClick={() => navigate('/opportunities')}>进入商机看板</Button>
+          <Box sx={{ px: 2, py: 1.75, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Box>
+              <Typography variant="h6">收入趋势</Typography>
+              <Typography variant="caption" color="text.secondary">按月统计已收款金额</Typography>
+            </Box>
+            <Button size="small" onClick={() => navigate('/reports')}>查看报表</Button>
           </Box>
-          <Box>
-            {recentDeals.map((deal) => (
-              <Box
-                key={deal.id}
-                onClick={() => navigate(`/opportunities/${deal.id}`)}
-                sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2.5, py: 1.25, cursor: 'pointer', borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 0 }, '&:hover': { bgcolor: '#f7f7f7' } }}
-              >
-                <Avatar sx={{ width: 36, height: 36, fontSize: 12, bgcolor: avatarColor(deal.company?.name ?? deal.title) }}>
-                  {initials(deal.company?.name ?? deal.title)}
-                </Avatar>
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                  <Typography variant="body2" fontWeight={600} noWrap>{deal.title}</Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap display="block">
-                    {deal.company?.name ?? '未关联客户'} · {deal.contact?.name ?? '未关联联系人'}
-                  </Typography>
-                </Box>
-                <Chip size="small" label={deal.stage.name} color={dealStatusMeta[deal.status].color} variant="outlined" />
-                <Typography variant="body2" fontWeight={700} sx={{ width: 96, textAlign: 'right' }}>{formatCurrency(deal.value, true)}</Typography>
-              </Box>
-            ))}
-            {recentDeals.length === 0 && <Typography sx={{ p: 3, textAlign: 'center' }} color="text.secondary">暂无商机</Typography>}
-          </Box>
+          <CardContent sx={{ p: 2 }}>
+            <Box sx={{ height: 230 }}>
+              {revenueByMonth.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={revenueByMonth} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9edf2" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(value: number) => `${Math.round(value / 10000)}万`} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={{ borderRadius: 6, border: '1px solid #dfe4ea', fontSize: 12 }} />
+                    <Line type="monotone" dataKey="value" stroke="#b8860b" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : <Typography variant="body2" color="text.secondary" sx={{ pt: 8, textAlign: 'center' }}>暂无收入数据</Typography>}
+            </Box>
+          </CardContent>
         </Card>
 
         <Card>
-          <Box sx={{ px: 2.5, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="h6">近期待办</Typography>
-            <Button size="small" onClick={() => navigate('/activities')}>全部</Button>
+          <Box sx={{ px: 2, py: 1.75, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="h6">近期任务</Typography>
+            <Button size="small" onClick={() => navigate('/calendar')}>全部</Button>
           </Box>
           <CardContent sx={{ p: 1.5 }}>
-            {upcomingActivities.length === 0 && <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>暂无待办活动</Typography>}
-            {upcomingActivities.map((activity) => {
-              const meta = activityMeta[activity.type];
-              const overdue = activity.dueDate && new Date(activity.dueDate) < new Date();
+            {upcomingTasks.length === 0 && <EmptyState title="暂无待办任务" />}
+            {upcomingTasks.map((task) => {
+              const overdue = task.dueDate && new Date(task.dueDate) < new Date();
               return (
-                <Box key={activity.id} sx={{ display: 'flex', gap: 1.25, p: 1, borderRadius: 1, '&:hover': { bgcolor: '#f7f7f7' } }}>
-                  <Avatar sx={{ width: 30, height: 30, bgcolor: meta.bg, color: meta.color }}><Box sx={{ fontSize: 14 }}>{activity.type === 'call' ? '电' : activity.type === 'email' ? '邮' : activity.type === 'meeting' ? '会' : activity.type === 'task' ? '任' : '止'}</Box></Avatar>
+                <Box
+                  key={task.id}
+                  onClick={() => navigate(`/matters/${task.matterId ?? ''}`)}
+                  sx={{ display: 'flex', gap: 1.25, p: 1, borderRadius: 1, cursor: 'pointer', '&:hover': { bgcolor: '#f8fafc' } }}
+                >
+                  <Avatar sx={{ width: 30, height: 30, bgcolor: overdue ? '#fdf0ef' : '#e8edf4', color: overdue ? '#b4443c' : '#1b365d', fontSize: 11 }}>
+                    {task.type.slice(0, 1).toUpperCase()}
+                  </Avatar>
                   <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                    <Typography variant="body2" fontWeight={600} noWrap>{activity.subject}</Typography>
-                    <Typography variant="caption" color="text.secondary" noWrap display="block">{activity.deal?.title ?? activity.contact?.name ?? '未关联'}</Typography>
+                    <Typography variant="body2" fontWeight={600} noWrap>{task.title}</Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap display="block">
+                      {taskTypeLabel(task.type)} · {formatDate(task.dueDate)}
+                    </Typography>
                   </Box>
-                  <Typography variant="caption" sx={{ color: overdue ? 'error.main' : 'text.secondary', whiteSpace: 'nowrap' }}>
-                    {formatDateTime(activity.dueDate)}
-                  </Typography>
+                  {overdue && <Chip size="small" color="error" variant="outlined" label="逾期" />}
                 </Box>
               );
             })}
-            {metrics.activitiesDue > 0 && (
-              <Box sx={{ px: 1, pt: 1.5 }}>
-                <LinearProgress variant="determinate" value={Math.min(100, metrics.activitiesDue * 10)} sx={{ height: 6, borderRadius: 3 }} />
-                <Typography variant="caption" color="text.secondary">{metrics.activitiesDue} 项任务等待处理</Typography>
-              </Box>
-            )}
           </CardContent>
         </Card>
       </Box>
+
+      <Card sx={{ mt: 2 }}>
+        <Box sx={{ px: 2, py: 1.75, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="h6">最近案件</Typography>
+          <Button size="small" onClick={() => navigate('/matters')}>进入案件管理</Button>
+        </Box>
+        <Box>
+          {recentMatters.map((matter) => (
+            <Box
+              key={matter.id}
+              onClick={() => navigate(`/matters/${matter.id}`)}
+              sx={{
+                display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.25, cursor: 'pointer',
+                borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 0 },
+                '&:hover': { bgcolor: '#f8fafc' },
+              }}
+            >
+              <Avatar sx={{ width: 34, height: 34, fontSize: 11, bgcolor: avatarColor(matter.title) }}>{initials(matter.title)}</Avatar>
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Typography variant="body2" fontWeight={600} noWrap>{matter.title}</Typography>
+                <Typography variant="caption" color="text.secondary" noWrap display="block">
+                  {matter.caseNumber || '未编号'} · {matter.practiceArea} · {matter.client?.name ?? `客户 #${matter.clientId}`}
+                </Typography>
+              </Box>
+              <Chip size="small" variant="outlined" label={matter.stage?.name ?? `阶段 #${matter.stageId}`} />
+              <Typography variant="body2" fontWeight={700} sx={{ width: 110, textAlign: 'right' }}>{formatCurrency(matter.value, true)}</Typography>
+            </Box>
+          ))}
+          {recentMatters.length === 0 && <Box sx={{ p: 3 }}><EmptyState title="暂无案件" /></Box>}
+        </Box>
+      </Card>
     </Box>
   );
 }

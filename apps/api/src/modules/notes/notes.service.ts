@@ -1,47 +1,26 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CreateNoteDto, UpdateNoteDto } from '../../common/dto/create-note.dto';
+import { CrudService } from '../../common/crud.service';
+import { NoteQueryDto } from '../../common/dto/special.dto';
 import { Note } from '../../database/entities';
 
 @Injectable()
-export class NotesService {
-  constructor(
-    @InjectRepository(Note) private readonly notes: Repository<Note>,
-  ) {}
+export class NotesService extends CrudService<Note> {
+  constructor(@InjectRepository(Note) repo: Repository<Note>) {
+    super(repo);
+  }
 
-  findAll(params: { targetType?: string; targetId?: number } = {}) {
-    const qb = this.notes.createQueryBuilder('note');
+  async findAll(query: NoteQueryDto = {}) {
+    const qb = this.repo.createQueryBuilder('note');
 
-    if (params.targetType) {
-      qb.andWhere('note.targetType = :targetType', { targetType: params.targetType });
+    if (query.targetType !== undefined) {
+      qb.andWhere('note.targetType = :targetType', { targetType: query.targetType });
     }
-    if (params.targetId !== undefined) {
-      qb.andWhere('note.targetId = :targetId', { targetId: params.targetId });
+    if (query.targetId !== undefined) {
+      qb.andWhere('note.targetId = :targetId', { targetId: query.targetId });
     }
 
     return qb.orderBy('note.createdAt', 'DESC').getMany();
-  }
-
-  async findOne(id: number) {
-    const note = await this.notes.findOne({ where: { id } });
-    if (!note) throw new NotFoundException(`备注 ${id} 不存在`);
-    return note;
-  }
-
-  create(dto: CreateNoteDto) {
-    return this.notes.save(this.notes.create(dto));
-  }
-
-  async update(id: number, dto: UpdateNoteDto) {
-    const note = await this.findOne(id);
-    Object.assign(note, dto);
-    return this.notes.save(note);
-  }
-
-  async remove(id: number) {
-    const note = await this.findOne(id);
-    await this.notes.remove(note);
-    return { id };
   }
 }

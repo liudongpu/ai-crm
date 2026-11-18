@@ -2,30 +2,56 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/common/ToastProvider';
 import type {
-  ActivityInput,
-  CompanyInput,
+  ClientInput,
+  CommunicationInput,
+  ConflictCheckInput,
+  ConflictCheckResult,
   ContactInput,
-  DealInput,
+  DocumentInput,
+  ExpenseInput,
+  InvoiceInput,
+  LeadConvertInput,
+  LeadConvertResult,
   LeadInput,
+  MatterInput,
   NoteInput,
+  PaymentInput,
+  TaskInput,
+  TimeEntryInput,
+  TrustTransactionInput,
+  UserInput,
 } from '@/types';
 
 export const keys = {
-  pipelines: ['pipelines'] as const,
-  deals: ['deals'] as const,
+  users: ['users'] as const,
+  clients: ['clients'] as const,
   contacts: ['contacts'] as const,
-  companies: ['companies'] as const,
+  matterStages: ['matterStages'] as const,
+  matters: ['matters'] as const,
   leads: ['leads'] as const,
+  conflicts: ['conflicts'] as const,
+  tasks: ['tasks'] as const,
+  documents: ['documents'] as const,
+  timeEntries: ['timeEntries'] as const,
+  expenses: ['expenses'] as const,
+  invoices: ['invoices'] as const,
+  payments: ['payments'] as const,
+  trustTransactions: ['trustTransactions'] as const,
+  communications: ['communications'] as const,
   notes: ['notes'] as const,
-  activities: ['activities'] as const,
   dashboard: ['dashboard'] as const,
   reports: ['reports'] as const,
   search: ['search'] as const,
 };
 
+type Params = Record<string, unknown>;
+type UpdateArgs<T> = { id: number; data: Partial<T> };
+
 function useRefresh() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries();
+  return () => {
+    void queryClient.invalidateQueries();
+  };
 }
 
 function useNotifyError() {
@@ -33,68 +59,108 @@ function useNotifyError() {
   return (error: Error) => toast.error(`操作失败：${error.message}`);
 }
 
-export function usePipelines() {
-  return useQuery({ queryKey: keys.pipelines, queryFn: api.pipelines.list });
-}
-
-export function useDeals(search?: string, pipelineId?: number) {
-  return useQuery({
-    queryKey: [...keys.deals, search, pipelineId],
-    queryFn: () => api.deals.list({ search, pipelineId }),
+function useCreateMutation<TInput>(fn: (data: TInput) => Promise<unknown>, success: string) {
+  const refresh = useRefresh();
+  const toast = useToast();
+  const onError = useNotifyError();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      refresh();
+      toast.success(success);
+    },
+    onError,
   });
 }
 
-export function useDeal(id: number | undefined) {
-  return useQuery({ queryKey: [...keys.deals, 'detail', id], queryFn: () => api.deals.get(id!), enabled: !!id });
-}
-
-export function useContacts() {
-  return useQuery({ queryKey: keys.contacts, queryFn: api.contacts.list });
-}
-
-export function useContact(id: number | undefined) {
-  return useQuery({ queryKey: [...keys.contacts, 'detail', id], queryFn: () => api.contacts.get(id!), enabled: !!id });
-}
-
-export function useCompanies() {
-  return useQuery({ queryKey: keys.companies, queryFn: api.companies.list });
-}
-
-export function useCompany(id: number | undefined) {
-  return useQuery({ queryKey: [...keys.companies, 'detail', id], queryFn: () => api.companies.get(id!), enabled: !!id });
-}
-
-export function useLeads(params: { status?: string; search?: string } = {}) {
-  return useQuery({
-    queryKey: [...keys.leads, params.status, params.search],
-    queryFn: () => api.leads.list(params),
+function useUpdateMutation<TInput>(fn: (args: UpdateArgs<TInput>) => Promise<unknown>, success: string) {
+  const refresh = useRefresh();
+  const toast = useToast();
+  const onError = useNotifyError();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      refresh();
+      toast.success(success);
+    },
+    onError,
   });
 }
 
-export function useLead(id: number | undefined) {
-  return useQuery({ queryKey: [...keys.leads, 'detail', id], queryFn: () => api.leads.get(id!), enabled: !!id });
-}
-
-export function useActivities(params?: { done?: boolean; limit?: number }) {
-  return useQuery({
-    queryKey: [...keys.activities, params?.done, params?.limit],
-    queryFn: () => api.activities.list(params),
+function useDeleteMutation(fn: (id: number) => Promise<unknown>, success: string) {
+  const refresh = useRefresh();
+  const toast = useToast();
+  const onError = useNotifyError();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      refresh();
+      toast.success(success);
+    },
+    onError,
   });
 }
 
-export function useNotes(params: { targetType?: string; targetId?: number } = {}) {
-  return useQuery({
-    queryKey: [...keys.notes, params.targetType, params.targetId],
-    queryFn: () => api.notes.list(params),
+function useActionMutation<TArgs, TResult = unknown>(fn: (args: TArgs) => Promise<TResult>, success?: string) {
+  const refresh = useRefresh();
+  const toast = useToast();
+  const onError = useNotifyError();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      refresh();
+      if (success) toast.success(success);
+    },
+    onError,
   });
 }
+
+/* ------------------------------- Queries -------------------------------- */
+
+function useList<T>(key: readonly unknown[], fn: () => Promise<T[]>, params: Params = {}) {
+  return useQuery({ queryKey: [...key, params], queryFn: fn });
+}
+
+function useDetail<T>(key: readonly unknown[], id: number | undefined, fn: () => Promise<T>) {
+  return useQuery({ queryKey: [...key, 'detail', id], queryFn: fn, enabled: id !== undefined });
+}
+
+export const useUsers = () => useList(keys.users, () => api.users.list());
+export const useUser = (id?: number) => useDetail(keys.users, id, () => api.users.get(id!));
+
+export const useClients = (params: Params = {}) => useList(keys.clients, () => api.clients.list(params), params);
+export const useClient = (id?: number) => useDetail(keys.clients, id, () => api.clients.get(id!));
+
+export const useContacts = (params: Params = {}) => useList(keys.contacts, () => api.contacts.list(params), params);
+export const useContact = (id?: number) => useDetail(keys.contacts, id, () => api.contacts.get(id!));
+
+export const useMatterStages = () => useList(keys.matterStages, () => api.matterStages.list());
+export const useMatters = (params: Params = {}) => useList(keys.matters, () => api.matters.list(params), params);
+export const useMatter = (id?: number) => useDetail(keys.matters, id, () => api.matters.get(id!));
+
+export const useLeads = (params: Params = {}) => useList(keys.leads, () => api.leads.list(params), params);
+export const useLead = (id?: number) => useDetail(keys.leads, id, () => api.leads.get(id!));
+
+export const useConflicts = () => useList(keys.conflicts, () => api.conflicts.list());
+export const useTasks = (params: Params = {}) => useList(keys.tasks, () => api.tasks.list(params), params);
+export const useDocuments = (params: Params = {}) => useList(keys.documents, () => api.documents.list(params), params);
+export const useTimeEntries = (params: Params = {}) => useList(keys.timeEntries, () => api.timeEntries.list(params), params);
+export const useExpenses = (params: Params = {}) => useList(keys.expenses, () => api.expenses.list(params), params);
+export const useInvoices = (params: Params = {}) => useList(keys.invoices, () => api.invoices.list(params), params);
+export const useInvoice = (id?: number) => useDetail(keys.invoices, id, () => api.invoices.get(id!));
+export const usePayments = (params: Params = {}) => useList(keys.payments, () => api.payments.list(params), params);
+export const useTrustTransactions = (params: Params = {}) =>
+  useList(keys.trustTransactions, () => api.trustTransactions.list(params), params);
+export const useCommunications = (params: Params = {}) =>
+  useList(keys.communications, () => api.communications.list(params), params);
+export const useNotes = (params: Params = {}) => useList(keys.notes, () => api.notes.list(params), params);
 
 export function useDashboard() {
   return useQuery({ queryKey: keys.dashboard, queryFn: api.dashboard.summary });
 }
 
 export function useReports(days: number) {
-  return useQuery({ queryKey: [...keys.reports, days], queryFn: () => api.reports(days) });
+  return useQuery({ queryKey: [...keys.reports, days], queryFn: () => api.dashboard.reports(days) });
 }
 
 export function useSearch(query: string) {
@@ -105,257 +171,93 @@ export function useSearch(query: string) {
   });
 }
 
-export function useCreateDeal() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (data: DealInput) => api.deals.create(data),
-    onSuccess: () => {
-      refresh();
-      toast.success('商机已创建');
-    },
-    onError: useNotifyError(),
-  });
-}
+/* ------------------------------ Mutations ------------------------------- */
 
-export function useUpdateDeal() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<DealInput> }) => api.deals.update(id, data),
-    onSuccess: () => {
-      refresh();
-      toast.success('商机已更新');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateUser = () => useCreateMutation<UserInput>(api.users.create, '用户已创建');
+export const useUpdateUser = () => useUpdateMutation<UserInput>((args) => api.users.update(args.id, args.data), '用户已更新');
+export const useDeleteUser = () => useDeleteMutation(api.users.remove, '用户已删除');
 
-export function useMoveDeal() {
-  const refresh = useRefresh();
-  const onError = useNotifyError();
-  return useMutation({
-    mutationFn: ({ id, stageId, position }: { id: number; stageId: number; position?: number }) =>
-      api.deals.move(id, stageId, position),
-    onSuccess: () => refresh(),
-    onError,
-  });
-}
+export const useCreateClient = () => useCreateMutation<ClientInput>(api.clients.create, '客户已创建');
+export const useUpdateClient = () => useUpdateMutation<ClientInput>((args) => api.clients.update(args.id, args.data), '客户已更新');
+export const useDeleteClient = () => useDeleteMutation(api.clients.remove, '客户已删除');
 
-export function useDeleteDeal() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (id: number) => api.deals.remove(id),
-    onSuccess: () => {
-      refresh();
-      toast.success('商机已删除');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateContact = () => useCreateMutation<ContactInput>(api.contacts.create, '联系人已创建');
+export const useUpdateContact = () => useUpdateMutation<ContactInput>((args) => api.contacts.update(args.id, args.data), '联系人已更新');
+export const useDeleteContact = () => useDeleteMutation(api.contacts.remove, '联系人已删除');
 
-export function useCreateContact() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (data: ContactInput) => api.contacts.create(data),
-    onSuccess: () => {
-      refresh();
-      toast.success('联系人已创建');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateMatter = () => useCreateMutation<MatterInput>(api.matters.create, '案件已创建');
+export const useUpdateMatter = () => useUpdateMutation<MatterInput>((args) => api.matters.update(args.id, args.data), '案件已更新');
+export const useDeleteMatter = () => useDeleteMutation(api.matters.remove, '案件已删除');
+export const useMoveMatter = () =>
+  useActionMutation<{ id: number; stageId: number; position?: number }>((args) =>
+    api.matters.move(args.id, args.stageId, args.position),
+  );
 
-export function useUpdateContact() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<ContactInput> }) => api.contacts.update(id, data),
-    onSuccess: () => {
-      refresh();
-      toast.success('联系人已更新');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateLead = () => useCreateMutation<LeadInput>(api.leads.create, '咨询线索已创建');
+export const useUpdateLead = () => useUpdateMutation<LeadInput>((args) => api.leads.update(args.id, args.data), '咨询线索已更新');
+export const useDeleteLead = () => useDeleteMutation(api.leads.remove, '咨询线索已删除');
+export const useConvertLead = () =>
+  useActionMutation<{ id: number; data?: LeadConvertInput }, LeadConvertResult>(
+    (args) => api.leads.convert(args.id, args.data),
+    '已转换为客户、联系人和案件',
+  );
 
-export function useDeleteContact() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (id: number) => api.contacts.remove(id),
-    onSuccess: () => {
-      refresh();
-      toast.success('联系人已删除');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCheckConflict = () =>
+  useActionMutation<ConflictCheckInput, ConflictCheckResult>((args) => api.conflicts.check(args));
+export const useDeleteConflict = () => useDeleteMutation(api.conflicts.remove, '检查记录已删除');
 
-export function useCreateCompany() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (data: CompanyInput) => api.companies.create(data),
-    onSuccess: () => {
-      refresh();
-      toast.success('客户已创建');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateTask = () => useCreateMutation<TaskInput>(api.tasks.create, '任务已创建');
+export const useUpdateTask = () => useUpdateMutation<TaskInput>((args) => api.tasks.update(args.id, args.data), '任务已更新');
+export const useDeleteTask = () => useDeleteMutation(api.tasks.remove, '任务已删除');
+export const useToggleTask = () =>
+  useActionMutation<number>((id) => api.tasks.toggle(id));
 
-export function useUpdateCompany() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CompanyInput> }) => api.companies.update(id, data),
-    onSuccess: () => {
-      refresh();
-      toast.success('客户已更新');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateDocument = () => useCreateMutation<DocumentInput>(api.documents.create, '文档已创建');
+export const useUpdateDocument = () =>
+  useUpdateMutation<DocumentInput>((args) => api.documents.update(args.id, args.data), '文档已更新');
+export const useDeleteDocument = () => useDeleteMutation(api.documents.remove, '文档已删除');
 
-export function useDeleteCompany() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (id: number) => api.companies.remove(id),
-    onSuccess: () => {
-      refresh();
-      toast.success('客户已删除');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateTimeEntry = () => useCreateMutation<TimeEntryInput>(api.timeEntries.create, '时间记录已创建');
+export const useUpdateTimeEntry = () =>
+  useUpdateMutation<TimeEntryInput>((args) => api.timeEntries.update(args.id, args.data), '时间记录已更新');
+export const useDeleteTimeEntry = () => useDeleteMutation(api.timeEntries.remove, '时间记录已删除');
 
-export function useCreateLead() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (data: LeadInput) => api.leads.create(data),
-    onSuccess: () => {
-      refresh();
-      toast.success('潜在客户已创建');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateExpense = () => useCreateMutation<ExpenseInput>(api.expenses.create, '费用已创建');
+export const useUpdateExpense = () => useUpdateMutation<ExpenseInput>((args) => api.expenses.update(args.id, args.data), '费用已更新');
+export const useDeleteExpense = () => useDeleteMutation(api.expenses.remove, '费用已删除');
 
-export function useUpdateLead() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<LeadInput> }) => api.leads.update(id, data),
-    onSuccess: () => {
-      refresh();
-      toast.success('潜在客户已更新');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateInvoice = () => useCreateMutation<InvoiceInput>(api.invoices.create, '账单已创建');
+export const useUpdateInvoice = () =>
+  useUpdateMutation<InvoiceInput>((args) => api.invoices.update(args.id, args.data), '账单已更新');
+export const useDeleteInvoice = () => useDeleteMutation(api.invoices.remove, '账单已删除');
+export const useApproveInvoice = () => useActionMutation<number>((id) => api.invoices.approve(id), '账单已审批');
+export const useSendInvoice = () => useActionMutation<number>((id) => api.invoices.send(id), '账单已发送');
+export const useVoidInvoice = () => useActionMutation<number>((id) => api.invoices.void(id), '账单已作废');
+export const usePayInvoice = () =>
+  useActionMutation<{ id: number; data: PaymentInput }>(
+    (args) => api.invoices.pay(args.id, args.data),
+    '收款已记录',
+  );
 
-export function useConvertLead() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (id: number) => api.leads.convert(id),
-    onSuccess: () => {
-      refresh();
-      toast.success('已转换为客户、联系人和商机');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreatePayment = () => useCreateMutation<PaymentInput>(api.payments.create, '收款已创建');
+export const useUpdatePayment = () =>
+  useUpdateMutation<PaymentInput>((args) => api.payments.update(args.id, args.data), '收款已更新');
+export const useDeletePayment = () => useDeleteMutation(api.payments.remove, '收款已删除');
 
-export function useDeleteLead() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (id: number) => api.leads.remove(id),
-    onSuccess: () => {
-      refresh();
-      toast.success('潜在客户已删除');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateTrustTransaction = () =>
+  useCreateMutation<TrustTransactionInput>(api.trustTransactions.create, '信托交易已创建');
+export const useUpdateTrustTransaction = () =>
+  useUpdateMutation<TrustTransactionInput>((args) => api.trustTransactions.update(args.id, args.data), '信托交易已更新');
+export const useDeleteTrustTransaction = () => useDeleteMutation(api.trustTransactions.remove, '信托交易已删除');
+export const useReconcileTrust = () =>
+  useActionMutation<number>((id) => api.trustTransactions.reconcile(id), '对账状态已切换');
 
-export function useCreateActivity() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (data: ActivityInput) => api.activities.create(data),
-    onSuccess: () => {
-      refresh();
-      toast.success('活动已创建');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateCommunication = () =>
+  useCreateMutation<CommunicationInput>(api.communications.create, '沟通记录已创建');
+export const useUpdateCommunication = () =>
+  useUpdateMutation<CommunicationInput>((args) => api.communications.update(args.id, args.data), '沟通记录已更新');
+export const useDeleteCommunication = () => useDeleteMutation(api.communications.remove, '沟通记录已删除');
 
-export function useUpdateActivity() {
-  const refresh = useRefresh();
-  const onError = useNotifyError();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<ActivityInput> }) => api.activities.update(id, data),
-    onSuccess: () => refresh(),
-    onError,
-  });
-}
-
-export function useDeleteActivity() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (id: number) => api.activities.remove(id),
-    onSuccess: () => {
-      refresh();
-      toast.success('活动已删除');
-    },
-    onError: useNotifyError(),
-  });
-}
-
-export function useCreateNote() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (data: NoteInput) => api.notes.create(data),
-    onSuccess: () => {
-      refresh();
-      toast.success('备注已添加');
-    },
-    onError: useNotifyError(),
-  });
-}
-
-export function useUpdateNote() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<NoteInput> }) => api.notes.update(id, data),
-    onSuccess: () => {
-      refresh();
-      toast.success('备注已更新');
-    },
-    onError: useNotifyError(),
-  });
-}
-
-export function useDeleteNote() {
-  const refresh = useRefresh();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (id: number) => api.notes.remove(id),
-    onSuccess: () => {
-      refresh();
-      toast.success('备注已删除');
-    },
-    onError: useNotifyError(),
-  });
-}
+export const useCreateNote = () => useCreateMutation<NoteInput>(api.notes.create, '备注已添加');
+export const useUpdateNote = () => useUpdateMutation<NoteInput>((args) => api.notes.update(args.id, args.data), '备注已更新');
+export const useDeleteNote = () => useDeleteMutation(api.notes.remove, '备注已删除');

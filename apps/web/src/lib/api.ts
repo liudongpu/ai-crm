@@ -1,127 +1,153 @@
 import type {
-  Activity,
-  ActivityInput,
-  Company,
-  CompanyInput,
+  Client,
+  ClientInput,
+  Communication,
+  CommunicationInput,
+  ConflictCheck,
+  ConflictCheckInput,
+  ConflictCheckResult,
   Contact,
   ContactInput,
   DashboardSummary,
-  Deal,
-  DealInput,
+  Document,
+  DocumentInput,
+  Expense,
+  ExpenseInput,
+  Invoice,
+  InvoiceInput,
   Lead,
+  LeadConvertInput,
+  LeadConvertResult,
   LeadInput,
+  Matter,
+  MatterInput,
+  MatterStage,
+  MatterStageInput,
   Note,
   NoteInput,
-  Pipeline,
+  Payment,
+  PaymentInput,
   ReportData,
   SearchResults,
+  Task,
+  TaskInput,
+  TimeEntry,
+  TimeEntryInput,
+  TrustTransaction,
+  TrustTransactionInput,
+  User,
+  UserInput,
 } from '@/types';
 
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+    });
+  } catch {
+    throw new ApiError('无法连接到服务器，请检查网络或服务是否已启动', 0);
+  }
+
   if (!response.ok) {
     let message = `请求失败 (${response.status})`;
     try {
-      const body = (await response.json()) as { message?: string | string[] };
-      if (body.message) message = Array.isArray(body.message) ? body.message.join('，') : body.message;
+      const payload = (await response.json()) as { message?: string | string[]; error?: string };
+      if (payload.message) {
+        message = Array.isArray(payload.message) ? payload.message.join('，') : payload.message;
+      } else if (payload.error) {
+        message = payload.error;
+      }
     } catch {
-      // ignore invalid error body
+      // Response body was not JSON; keep the status based message.
     }
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
+
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
-const body = <T>(value: T) => JSON.stringify(value);
+function toQuery(params: Record<string, unknown> = {}): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue;
+    search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `?${text}` : '';
+}
+
+function send<T>(method: 'POST' | 'PATCH' | 'DELETE', path: string, data?: unknown): Promise<T> {
+  return request<T>(path, {
+    method,
+    ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
+  });
+}
+
+function crud<T, TInput>(resource: string) {
+  return {
+    list: (params: Record<string, unknown> = {}) => request<T[]>(`/${resource}${toQuery(params)}`),
+    get: (id: number) => request<T>(`/${resource}/${id}`),
+    create: (data: TInput) => send<T>('POST', `/${resource}`, data),
+    update: (id: number, data: Partial<TInput>) => send<T>('PATCH', `/${resource}/${id}`, data),
+    remove: (id: number) => send<{ id: number }>('DELETE', `/${resource}/${id}`),
+  };
+}
 
 export const api = {
-  pipelines: {
-    list: () => request<Pipeline[]>('/pipelines'),
-  },
-  deals: {
-    list: (params: { search?: string; pipelineId?: number } = {}) => {
-      const query = new URLSearchParams();
-      if (params.search) query.set('search', params.search);
-      if (params.pipelineId) query.set('pipelineId', String(params.pipelineId));
-      const suffix = query.size ? `?${query}` : '';
-      return request<Deal[]>(`/deals${suffix}`);
-    },
-    get: (id: number) => request<Deal>(`/deals/${id}`),
-    create: (data: DealInput) => request<Deal>('/deals', { method: 'POST', body: body(data) }),
-    update: (id: number, data: Partial<DealInput>) =>
-      request<Deal>(`/deals/${id}`, { method: 'PATCH', body: body(data) }),
+  users: crud<User, UserInput>('users'),
+  clients: crud<Client, ClientInput>('clients'),
+  contacts: crud<Contact, ContactInput>('contacts'),
+  matterStages: crud<MatterStage, MatterStageInput>('matter-stages'),
+  matters: {
+    ...crud<Matter, MatterInput>('matters'),
     move: (id: number, stageId: number, position?: number) =>
-      request<Deal>(`/deals/${id}/stage`, { method: 'PATCH', body: body({ stageId, position }) }),
-    remove: (id: number) => request<{ id: number }>(`/deals/${id}`, { method: 'DELETE' }),
-  },
-  contacts: {
-    list: () => request<Contact[]>('/contacts'),
-    get: (id: number) => request<Contact>(`/contacts/${id}`),
-    create: (data: ContactInput) => request<Contact>('/contacts', { method: 'POST', body: body(data) }),
-    update: (id: number, data: Partial<ContactInput>) =>
-      request<Contact>(`/contacts/${id}`, { method: 'PATCH', body: body(data) }),
-    remove: (id: number) => request<{ id: number }>(`/contacts/${id}`, { method: 'DELETE' }),
-  },
-  companies: {
-    list: () => request<Company[]>('/companies'),
-    get: (id: number) => request<Company>(`/companies/${id}`),
-    create: (data: CompanyInput) => request<Company>('/companies', { method: 'POST', body: body(data) }),
-    update: (id: number, data: Partial<CompanyInput>) =>
-      request<Company>(`/companies/${id}`, { method: 'PATCH', body: body(data) }),
-    remove: (id: number) => request<{ id: number }>(`/companies/${id}`, { method: 'DELETE' }),
+      send<Matter>('PATCH', `/matters/${id}/stage`, { stageId, position }),
   },
   leads: {
-    list: (params: { status?: string; search?: string } = {}) => {
-      const query = new URLSearchParams();
-      if (params.status) query.set('status', params.status);
-      if (params.search) query.set('search', params.search);
-      const suffix = query.size ? `?${query}` : '';
-      return request<Lead[]>(`/leads${suffix}`);
-    },
-    get: (id: number) => request<Lead>(`/leads/${id}`),
-    create: (data: LeadInput) => request<Lead>('/leads', { method: 'POST', body: body(data) }),
-    update: (id: number, data: Partial<LeadInput>) =>
-      request<Lead>(`/leads/${id}`, { method: 'PATCH', body: body(data) }),
-    convert: (id: number) =>
-      request<{ lead: Lead; company: Company; contact: Contact; deal: Deal }>(`/leads/${id}/convert`, {
-        method: 'POST',
-      }),
-    remove: (id: number) => request<{ id: number }>(`/leads/${id}`, { method: 'DELETE' }),
+    ...crud<Lead, LeadInput>('leads'),
+    convert: (id: number, data?: LeadConvertInput) => send<LeadConvertResult>('POST', `/leads/${id}/convert`, data),
   },
-  activities: {
-    list: (params: { done?: boolean; limit?: number } = {}) => {
-      const query = new URLSearchParams();
-      if (params.done !== undefined) query.set('done', String(params.done));
-      if (params.limit) query.set('limit', String(params.limit));
-      const suffix = query.size ? `?${query}` : '';
-      return request<Activity[]>(`/activities${suffix}`);
-    },
-    get: (id: number) => request<Activity>(`/activities/${id}`),
-    create: (data: ActivityInput) => request<Activity>('/activities', { method: 'POST', body: body(data) }),
-    update: (id: number, data: Partial<ActivityInput>) =>
-      request<Activity>(`/activities/${id}`, { method: 'PATCH', body: body(data) }),
-    remove: (id: number) => request<{ id: number }>(`/activities/${id}`, { method: 'DELETE' }),
+  conflicts: {
+    ...crud<ConflictCheck, ConflictCheckInput>('conflicts'),
+    check: (data: ConflictCheckInput) => send<ConflictCheckResult>('POST', '/conflicts/check', data),
   },
-  notes: {
-    list: (params: { targetType?: string; targetId?: number } = {}) => {
-      const query = new URLSearchParams();
-      if (params.targetType) query.set('targetType', params.targetType);
-      if (params.targetId) query.set('targetId', String(params.targetId));
-      const suffix = query.size ? `?${query}` : '';
-      return request<Note[]>(`/notes${suffix}`);
-    },
-    create: (data: NoteInput) => request<Note>('/notes', { method: 'POST', body: body(data) }),
-    update: (id: number, data: Partial<NoteInput>) =>
-      request<Note>(`/notes/${id}`, { method: 'PATCH', body: body(data) }),
-    remove: (id: number) => request<{ id: number }>(`/notes/${id}`, { method: 'DELETE' }),
+  tasks: {
+    ...crud<Task, TaskInput>('tasks'),
+    toggle: (id: number) => send<Task>('PATCH', `/tasks/${id}/toggle`),
   },
+  documents: crud<Document, DocumentInput>('documents'),
+  timeEntries: crud<TimeEntry, TimeEntryInput>('time-entries'),
+  expenses: crud<Expense, ExpenseInput>('expenses'),
+  invoices: {
+    ...crud<Invoice, InvoiceInput>('invoices'),
+    approve: (id: number) => send<Invoice>('POST', `/invoices/${id}/approve`),
+    send: (id: number) => send<Invoice>('POST', `/invoices/${id}/send`),
+    void: (id: number) => send<Invoice>('POST', `/invoices/${id}/void`),
+    pay: (id: number, data: PaymentInput) => send<Invoice>('POST', `/invoices/${id}/payments`, data),
+  },
+  payments: crud<Payment, PaymentInput>('payments'),
+  trustTransactions: {
+    ...crud<TrustTransaction, TrustTransactionInput>('trust-transactions'),
+    reconcile: (id: number) => send<TrustTransaction>('PATCH', `/trust-transactions/${id}/reconcile`),
+  },
+  communications: crud<Communication, CommunicationInput>('communications'),
+  notes: crud<Note, NoteInput>('notes'),
   search: (query: string) => request<SearchResults>(`/search?q=${encodeURIComponent(query)}`),
-  reports: (days = 90) => request<ReportData>(`/dashboard/reports?days=${days}`),
   dashboard: {
     summary: () => request<DashboardSummary>('/dashboard/summary'),
+    reports: (days = 90) => request<ReportData>(`/dashboard/reports?days=${days}`),
   },
 };

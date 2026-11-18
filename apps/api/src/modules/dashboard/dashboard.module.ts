@@ -1,12 +1,37 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Activity, Company, Contact, Deal, Lead, Stage } from '../../database/entities';
+import {
+  Client,
+  Invoice,
+  Lead,
+  Matter,
+  MatterStage,
+  Payment,
+  Task,
+  TimeEntry,
+  TrustTransaction,
+  User,
+} from '../../database/entities';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Deal, Stage, Contact, Company, Activity, Lead])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Matter,
+      MatterStage,
+      Client,
+      Lead,
+      Task,
+      TimeEntry,
+      Invoice,
+      Payment,
+      TrustTransaction,
+      User,
+    ]),
+  ],
   controllers: [DashboardController],
   providers: [DashboardService],
+  exports: [DashboardService],
 })
 export class DashboardModule {}

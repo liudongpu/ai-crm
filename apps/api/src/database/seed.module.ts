@@ -1,10 +1,46 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import {
+  Client,
+  Communication,
+  ConflictCheck,
+  Contact,
+  Document,
+  Expense,
+  Invoice,
+  Lead,
+  Matter,
+  MatterStage,
+  Note,
+  Payment,
+  Task,
+  TimeEntry,
+  TrustTransaction,
+  User,
+} from './entities';
 import { SeedService } from './seed.service';
-import { Activity, Company, Contact, Deal, Lead, Note, Pipeline, Stage } from './entities';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Pipeline, Stage, Company, Contact, Deal, Activity, Lead, Note])],
+  imports: [
+    TypeOrmModule.forFeature([
+      User,
+      MatterStage,
+      Client,
+      Contact,
+      Matter,
+      Lead,
+      ConflictCheck,
+      Task,
+      Document,
+      TimeEntry,
+      Expense,
+      Invoice,
+      Payment,
+      TrustTransaction,
+      Communication,
+      Note,
+    ]),
+  ],
   providers: [SeedService],
   exports: [SeedService],
 })

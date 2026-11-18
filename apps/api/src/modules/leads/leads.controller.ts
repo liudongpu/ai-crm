@@ -7,9 +7,9 @@ import {
   ParseIntPipe,
   Patch,
   Post,
-  Query,
 } from '@nestjs/common';
 import { CreateLeadDto, UpdateLeadDto } from '../../common/dto/create-lead.dto';
+import { ConvertLeadDto } from '../../common/dto/special.dto';
 import { LeadsService } from './leads.service';
 
 @Controller('leads')
@@ -17,8 +17,8 @@ export class LeadsController {
   constructor(private readonly service: LeadsService) {}
 
   @Get()
-  findAll(@Query('status') status?: string, @Query('search') search?: string) {
-    return this.service.findAll({ status, search });
+  findAll() {
+    return this.service.findAll();
   }
 
   @Get(':id')
@@ -31,6 +31,11 @@ export class LeadsController {
     return this.service.create(dto);
   }
 
+  @Post(':id/convert')
+  convert(@Param('id', ParseIntPipe) id: number, @Body() dto: ConvertLeadDto) {
+    return this.service.convert(id, dto ?? {});
+  }
+
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateLeadDto) {
     return this.service.update(id, dto);
@@ -39,10 +44,5 @@ export class LeadsController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
-  }
-
-  @Post(':id/convert')
-  convert(@Param('id', ParseIntPipe) id: number) {
-    return this.service.convert(id);
   }
 }

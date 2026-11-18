@@ -1,114 +1,79 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CreateLeadDto, UpdateLeadDto } from '../../common/dto/create-lead.dto';
-import { Company, Contact, Deal, Lead, Pipeline, Stage } from '../../database/entities';
+import { CrudService } from '../../common/crud.service';
+import { ConvertLeadDto } from '../../common/dto/special.dto';
+import { Client, Contact, Lead, Matter, MatterStage } from '../../database/entities';
 
 @Injectable()
-export class LeadsService {
+export class LeadsService extends CrudService<Lead> {
   constructor(
-    @InjectRepository(Lead) private readonly leads: Repository<Lead>,
-    @InjectRepository(Company) private readonly companies: Repository<Company>,
+    @InjectRepository(Lead) repo: Repository<Lead>,
+    @InjectRepository(Client) private readonly clients: Repository<Client>,
     @InjectRepository(Contact) private readonly contacts: Repository<Contact>,
-    @InjectRepository(Deal) private readonly deals: Repository<Deal>,
-    @InjectRepository(Stage) private readonly stages: Repository<Stage>,
-    @InjectRepository(Pipeline) private readonly pipelines: Repository<Pipeline>,
-  ) {}
-
-  async findAll(params: { status?: string; search?: string } = {}) {
-    const qb = this.leads.createQueryBuilder('lead');
-
-    if (params.status) {
-      qb.andWhere('lead.status = :status', { status: params.status });
-    }
-    if (params.search) {
-      qb.andWhere(
-        '(lead.name LIKE :search OR lead.company LIKE :search OR lead.email LIKE :search OR lead.phone LIKE :search)',
-        { search: `%${params.search}%` },
-      );
-    }
-
-    return qb.orderBy('lead.createdAt', 'DESC').getMany();
+    @InjectRepository(Matter) private readonly matters: Repository<Matter>,
+    @InjectRepository(MatterStage) private readonly stages: Repository<MatterStage>,
+  ) {
+    super(repo);
   }
 
-  async findOne(id: number) {
-    const lead = await this.leads.findOne({ where: { id } });
-    if (!lead) throw new NotFoundException(`潜在客户 ${id} 不存在`);
-    return lead;
-  }
-
-  create(dto: CreateLeadDto) {
-    return this.leads.save(this.leads.create(dto));
-  }
-
-  async update(id: number, dto: UpdateLeadDto) {
+  async convert(id: number, dto: ConvertLeadDto) {
     const lead = await this.findOne(id);
-    Object.assign(lead, dto);
-    return this.leads.save(lead);
-  }
+    const stage = await this.stages.findOne({ where: {}, order: { position: 'ASC' } });
+    if (!stage) throw new NotFoundException('案件阶段尚未初始化');
 
-  async remove(id: number) {
-    const lead = await this.findOne(id);
-    await this.leads.remove(lead);
-    return { id };
-  }
-
-  async convert(id: number) {
-    const lead = await this.findOne(id);
-    if (lead.status === 'converted' || lead.convertedAt) {
-      throw new BadRequestException('该潜在客户已转换');
-    }
-
-    const pipeline = await this.pipelines.findOne({
-      where: {},
-      order: { createdAt: 'ASC' },
-    });
-    if (!pipeline) throw new NotFoundException('请先创建销售流程');
-
-    const stage = await this.stages.findOne({
-      where: { pipelineId: pipeline.id },
-      order: { position: 'ASC', createdAt: 'ASC' },
-    });
-    if (!stage) throw new NotFoundException('销售流程尚未配置阶段');
-
-    const company = await this.companies.save(
-      this.companies.create({ name: lead.company }),
-    );
-    const contact = await this.contacts.save(
-      this.contacts.create({
-        name: lead.name,
-        email: lead.email,
-        phone: lead.phone,
-        position: lead.title,
-        owner: lead.owner,
-        companyId: company.id,
+    const practiceArea = dto.practiceArea ?? lead.practiceArea ?? '综合法律';
+    const client = await this.clients.save(
+      this.clients.create({
+        name: dto.clientName ?? lead.company ?? lead.name,
+        type: lead.company ? 'company' : 'individual',
+        contactName: lead.name,
+        email: lead.email ?? undefined,
+        phone: lead.phone ?? undefined,
+        industry: undefined,
+        status: 'active',
+        ownerId: lead.ownerId ?? undefined,
+        notes: lead.description ?? undefined,
       }),
     );
 
-    const description = lead.description?.trim();
-    const title =
-      description && description.length <= 60 ? description : `${lead.company} - 新商机`;
+    const contact = await this.contacts.save(
+      this.contacts.create({
+        name: lead.name,
+        clientId: client.id,
+        email: lead.email ?? undefined,
+        phone: lead.phone ?? undefined,
+        isPrimary: true,
+        notes: lead.description ?? undefined,
+      }),
+    );
 
-    const deal = await this.deals.save(
-      this.deals.create({
-        title,
-        value: 0,
-        priority: lead.rating === 'hot' ? 'high' : 'medium',
-        source: lead.source,
-        pipelineId: pipeline.id,
+    const matter = await this.matters.save(
+      this.matters.create({
+        title: dto.title ?? `${client.name} · ${practiceArea}`,
+        caseNumber: undefined,
+        clientId: client.id,
         stageId: stage.id,
-        position: await this.deals.count({ where: { stageId: stage.id } }),
-        companyId: company.id,
-        contactId: contact.id,
+        practiceArea,
+        status: 'open',
+        priority: lead.rating === 'hot' ? 'high' : 'medium',
+        ownerId: lead.ownerId ?? undefined,
+        description: lead.description ?? undefined,
+        openDate: new Date(),
+        closeDate: undefined,
+        value: dto.value ?? 0,
+        position: 0,
       }),
     );
 
     lead.status = 'converted';
     lead.convertedAt = new Date();
+    lead.convertedClientId = client.id;
     lead.convertedContactId = contact.id;
-    lead.convertedDealId = deal.id;
-    const convertedLead = await this.leads.save(lead);
+    lead.convertedMatterId = matter.id;
+    if (lead.conflictChecked && !lead.conflictResult) lead.conflictResult = 'clear';
+    await this.repo.save(lead);
 
-    return { lead: convertedLead, company, contact, deal };
+    return { lead, client, contact, matter };
   }
 }

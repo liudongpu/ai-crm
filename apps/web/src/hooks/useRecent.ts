@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'ai-crm:recent-items';
-const EVENT_NAME = 'ai-crm:recent-changed';
+const STORAGE_KEY = 'lexdesk:recent-items';
+const EVENT_NAME = 'lexdesk:recent-changed';
 
-export type RecentType = 'account' | 'contact' | 'lead' | 'opportunity';
+export type RecentType = 'matter' | 'client' | 'contact' | 'lead' | 'document';
 
 export type RecentItem = {
   type: RecentType;
@@ -23,15 +23,16 @@ function read(): RecentItem[] {
 
 export function recordPath(type: RecentType, id: number) {
   const routes: Record<RecentType, string> = {
-    account: 'accounts',
+    matter: 'matters',
+    client: 'clients',
     contact: 'contacts',
     lead: 'leads',
-    opportunity: 'opportunities',
+    document: 'documents',
   };
   return `/${routes[type]}/${id}`;
 }
 
-export function useTrackVisit(type: RecentType, id: number | undefined, title: string) {
+export function useTrackVisit(type: RecentType, id: number | undefined, title: string | undefined) {
   useEffect(() => {
     if (!id || !title) return;
     const items = read().filter((item) => !(item.type === type && item.id === id));

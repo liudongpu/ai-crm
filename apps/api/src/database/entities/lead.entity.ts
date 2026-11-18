@@ -1,10 +1,10 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+
+export const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'converted', 'lost'] as const;
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+
+export const LEAD_RATINGS = ['hot', 'warm', 'cold'] as const;
+export type LeadRating = (typeof LEAD_RATINGS)[number];
 
 @Entity('leads')
 export class Lead {
@@ -14,11 +14,8 @@ export class Lead {
   @Column()
   name: string;
 
-  @Column()
-  company: string;
-
   @Column({ type: 'varchar', nullable: true })
-  title: string | null;
+  company: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   email: string | null;
@@ -26,33 +23,41 @@ export class Lead {
   @Column({ type: 'varchar', nullable: true })
   phone: string | null;
 
-  @Column({
-    type: 'simple-enum',
-    enum: ['new', 'working', 'qualified', 'converted', 'unqualified'],
-    default: 'new',
-  })
-  status: 'new' | 'working' | 'qualified' | 'converted' | 'unqualified';
-
   @Column({ type: 'varchar', nullable: true })
   source: string | null;
 
-  @Column({ type: 'simple-enum', enum: ['hot', 'warm', 'cold'], default: 'warm' })
-  rating: 'hot' | 'warm' | 'cold';
+  @Column({ type: 'varchar', nullable: true })
+  practiceArea: string | null;
 
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ default: '销售团队' })
-  owner: string;
+  @Column({ type: 'varchar', default: 'new' })
+  status: LeadStatus;
 
-  @Column({ type: 'datetime', nullable: true })
-  convertedAt: Date | null;
+  @Column({ type: 'varchar', default: 'warm' })
+  rating: LeadRating;
+
+  @Column({ default: false })
+  conflictChecked: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  conflictResult: 'clear' | 'conflict' | null;
+
+  @Column({ type: 'integer', nullable: true })
+  ownerId: number | null;
+
+  @Column({ type: 'integer', nullable: true })
+  convertedClientId: number | null;
 
   @Column({ type: 'integer', nullable: true })
   convertedContactId: number | null;
 
   @Column({ type: 'integer', nullable: true })
-  convertedDealId: number | null;
+  convertedMatterId: number | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  convertedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -4,19 +4,16 @@ import Snackbar from '@mui/material/Snackbar';
 
 type Severity = 'success' | 'error' | 'warning' | 'info';
 
-type ToastApi = {
+export type ToastApi = {
   success: (message: string) => void;
   error: (message: string) => void;
   info: (message: string) => void;
   warning: (message: string) => void;
 };
 
-const ToastContext = createContext<ToastApi>({
-  success: () => undefined,
-  error: () => undefined,
-  info: () => undefined,
-  warning: () => undefined,
-});
+const noop = () => undefined;
+
+const ToastContext = createContext<ToastApi>({ success: noop, error: noop, info: noop, warning: noop });
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<{ open: boolean; message: string; severity: Severity }>({

@@ -9,7 +9,7 @@ export function ConfirmDialog({
   open,
   title = '确认操作',
   message,
-  confirmLabel = '确认',
+  confirmLabel = '确认删除',
   onClose,
   onConfirm,
 }: {

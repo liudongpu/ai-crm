@@ -2,7 +2,7 @@
   "name": "ai-crm",
   "version": "0.1.0",
   "private": true,
-  "description": "Salesforce-style CRM built with NestJS, TypeORM, SQLite, React, Vite and Material UI",
+  "description": "Law firm practice management system built with NestJS, TypeORM, SQLite, React, Vite and Material UI",
   "workspaces": [
     "apps/api",
     "apps/web"

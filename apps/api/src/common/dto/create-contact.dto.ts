@@ -1,10 +1,18 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsEmail, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateContactDto {
   @IsString()
   @MaxLength(120)
   name: string;
+
+  @IsOptional()
+  @IsInt()
+  clientId?: number;
+
+  @IsOptional()
+  @IsString()
+  position?: string;
 
   @IsOptional()
   @IsEmail()
@@ -16,15 +24,15 @@ export class CreateContactDto {
 
   @IsOptional()
   @IsString()
-  position?: string;
+  mobile?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrimary?: boolean;
 
   @IsOptional()
   @IsString()
-  owner?: string;
-
-  @IsOptional()
-  @IsInt()
-  companyId?: number | null;
+  notes?: string;
 }
 
 export class UpdateContactDto extends PartialType(CreateContactDto) {}

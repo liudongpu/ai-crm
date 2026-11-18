@@ -1,33 +1,24 @@
 import { PartialType } from '@nestjs/mapped-types';
-import {
-  IsEnum,
-  IsInt,
-  IsOptional,
-  IsPositive,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString } from 'class-validator';
+import { NOTE_TARGET_TYPES, NoteTargetType } from '../../database/entities';
 
 export class CreateNoteDto {
-  @IsString()
-  @MaxLength(180)
-  title: string;
-
   @IsOptional()
   @IsString()
-  content?: string | null;
+  title?: string;
 
-  @IsEnum(['account', 'contact', 'lead', 'opportunity'])
-  targetType: 'account' | 'contact' | 'lead' | 'opportunity';
+  @IsString()
+  content: string;
+
+  @IsIn(NOTE_TARGET_TYPES)
+  targetType: NoteTargetType;
 
   @IsInt()
-  @IsPositive()
   targetId: number;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  owner?: string;
+  @IsInt()
+  authorId?: number;
 }
 
 export class UpdateNoteDto extends PartialType(CreateNoteDto) {}

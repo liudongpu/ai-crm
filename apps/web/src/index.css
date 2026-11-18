@@ -1,8 +1,12 @@
-/* Material UI provides the design system; this file only holds a few global rules. */
+/* MUI handles the design system; only browser-level resets live here. */
 html,
 body,
 #root {
   min-height: 100%;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 a {
@@ -11,6 +15,6 @@ a {
 }
 
 *:focus-visible {
-  outline: 2px solid #0176d3;
+  outline: 2px solid #b8860b;
   outline-offset: 1px;
 }

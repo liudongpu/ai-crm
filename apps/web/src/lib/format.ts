@@ -1,54 +1,71 @@
 import { format, parseISO } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
-export function formatCurrency(value: number, compact = false) {
-  if (compact && Math.abs(value) >= 10000) {
-    return `¥${(value / 10000).toFixed(value % 10000 === 0 ? 0 : 1)}万`;
+export function formatCurrency(value: number | null | undefined, compact = false) {
+  const amount = value ?? 0;
+  if (compact && Math.abs(amount) >= 10000) {
+    return `¥${(amount / 10000).toFixed(amount % 10000 === 0 ? 0 : 1)}万`;
   }
   return new Intl.NumberFormat('zh-CN', {
     style: 'currency',
     currency: 'CNY',
-    maximumFractionDigits: 0,
-  }).format(value || 0);
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
-export function initials(name: string) {
-  return name.trim().slice(0, 2).toUpperCase();
+export function formatNumber(value: number | null | undefined, digits = 1) {
+  return (value ?? 0).toFixed(digits).replace(/\.0+$/, '');
 }
 
-const AVATAR_COLORS = [
-  '#2e844a',
-  '#0176d3',
-  '#9060d8',
-  '#c75a00',
-  '#ba0517',
-  '#057d8e',
-];
+export function initials(name: string | null | undefined) {
+  return (name ?? '').trim().slice(0, 2).toUpperCase() || '?';
+}
 
-export function avatarColor(seed: string) {
-  const sum = [...seed].reduce((acc, char) => acc + char.charCodeAt(0), 0);
+const AVATAR_COLORS = ['#1b365d', '#2f7a55', '#8a6808', '#5a5f9e', '#b4443c', '#2c6b8f'];
+
+export function avatarColor(seed: string | null | undefined) {
+  const key = seed ?? '';
+  const sum = [...key].reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return AVATAR_COLORS[sum % AVATAR_COLORS.length];
 }
 
-export function formatDate(value?: string | null, pattern = 'yyyy-MM-dd') {
-  if (!value) return '—';
+function parseDate(value: string | Date | null | undefined): Date | null {
+  if (!value) return null;
   try {
-    return format(parseISO(value), pattern);
+    const parsed = typeof value === 'string' ? parseISO(value) : value;
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   } catch {
-    return value;
+    return null;
   }
 }
 
+export function formatDate(value?: string | null, pattern = 'yyyy-MM-dd') {
+  const parsed = parseDate(value);
+  return parsed ? format(parsed, pattern) : '—';
+}
+
 export function formatDateTime(value?: string | null) {
-  return formatDate(value, 'M月d日 HH:mm');
+  return formatDate(value, 'yyyy-MM-dd HH:mm');
+}
+
+export function formatShortDate(value?: string | null) {
+  return formatDate(value, 'M月d日');
 }
 
 export function todayLabel() {
   return format(new Date(), 'yyyy年M月d日 EEEE', { locale: zhCN });
 }
 
+/** Value for a datetime-local input, in the browser's local timezone. */
 export function toLocalInput(iso?: string | null) {
-  if (!iso) return '';
-  const date = parseISO(iso);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  const parsed = parseDate(iso);
+  if (!parsed) return '';
+  const shifted = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60_000);
+  return shifted.toISOString().slice(0, 16);
+}
+
+/** Value for a date input. */
+export function toDateInput(iso?: string | null) {
+  const parsed = parseDate(iso);
+  return parsed ? format(parsed, 'yyyy-MM-dd') : '';
 }

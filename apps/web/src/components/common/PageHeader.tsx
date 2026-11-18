@@ -16,10 +16,8 @@ export function PageHeader({
 }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-      <Box>
-        <Typography variant="h5" component="h1">
-          {title}
-        </Typography>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="h5" component="h1">{title}</Typography>
         {subtitle && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {subtitle}
@@ -27,7 +25,11 @@ export function PageHeader({
         )}
         {children}
       </Box>
-      {actions && <Stack direction="row" spacing={1} alignItems="center">{actions}</Stack>}
+      {actions && (
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          {actions}
+        </Stack>
+      )}
     </Box>
   );
 }

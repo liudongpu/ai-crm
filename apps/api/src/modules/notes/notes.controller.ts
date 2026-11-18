@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CreateNoteDto, UpdateNoteDto } from '../../common/dto/create-note.dto';
+import { NoteQueryDto } from '../../common/dto/special.dto';
 import { NotesService } from './notes.service';
 
 @Controller('notes')
@@ -17,11 +18,8 @@ export class NotesController {
   constructor(private readonly service: NotesService) {}
 
   @Get()
-  findAll(
-    @Query('targetType') targetType?: string,
-    @Query('targetId', new ParseIntPipe({ optional: true })) targetId?: number,
-  ) {
-    return this.service.findAll({ targetType, targetId });
+  findAll(@Query() query: NoteQueryDto) {
+    return this.service.findAll(query ?? {});
   }
 
   @Get(':id')

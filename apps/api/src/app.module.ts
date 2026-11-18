@@ -4,24 +4,47 @@ import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { SeedService } from './database/seed.service';
 import { SeedModule } from './database/seed.module';
-import { Activity, Company, Contact, Deal, Lead, Note, Pipeline, Stage } from './database/entities';
-import { ActivitiesModule } from './modules/activities/activities.module';
-import { CompaniesModule } from './modules/companies/companies.module';
+import { SeedService } from './database/seed.service';
+import {
+  Client,
+  Communication,
+  ConflictCheck,
+  Contact,
+  Document,
+  Expense,
+  Invoice,
+  Lead,
+  Matter,
+  MatterStage,
+  Note,
+  Payment,
+  Task,
+  TimeEntry,
+  TrustTransaction,
+  User,
+} from './database/entities';
+import { ClientsModule } from './modules/clients/clients.module';
+import { CommunicationsModule } from './modules/communications/communications.module';
+import { ConflictsModule } from './modules/conflicts/conflicts.module';
 import { ContactsModule } from './modules/contacts/contacts.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
-import { DealsModule } from './modules/deals/deals.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
+import { InvoicesModule } from './modules/invoices/invoices.module';
 import { LeadsModule } from './modules/leads/leads.module';
+import { MattersModule } from './modules/matters/matters.module';
 import { NotesModule } from './modules/notes/notes.module';
-import { PipelinesModule } from './modules/pipelines/pipelines.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { SearchModule } from './modules/search/search.module';
+import { TasksModule } from './modules/tasks/tasks.module';
+import { TimeEntriesModule } from './modules/time-entries/time-entries.module';
+import { TrustTransactionsModule } from './modules/trust-transactions/trust-transactions.module';
+import { UsersModule } from './modules/users/users.module';
 
-// Keep the database in the repository root regardless of which workspace script starts the API.
 const databasePath = resolve(__dirname, '..', '..', '..', 'data', 'crm.sqlite');
 mkdirSync(dirname(databasePath), { recursive: true });
 
-// When the web app has been built, serve it from the same origin as the API.
 const webDistPath = resolve(__dirname, '..', '..', 'web', 'dist');
 const shouldServeWeb = existsSync(join(webDistPath, 'index.html'));
 
@@ -31,16 +54,41 @@ const shouldServeWeb = existsSync(join(webDistPath, 'index.html'));
     TypeOrmModule.forRoot({
       type: 'better-sqlite3',
       database: databasePath,
-      entities: [Company, Contact, Deal, Pipeline, Stage, Activity, Lead, Note],
+      entities: [
+        User,
+        Client,
+        Contact,
+        MatterStage,
+        Matter,
+        Lead,
+        ConflictCheck,
+        Task,
+        Document,
+        TimeEntry,
+        Expense,
+        Invoice,
+        Payment,
+        TrustTransaction,
+        Communication,
+        Note,
+      ],
       synchronize: true,
       logging: false,
     }),
-    PipelinesModule,
-    CompaniesModule,
+    UsersModule,
+    ClientsModule,
     ContactsModule,
-    DealsModule,
-    ActivitiesModule,
+    MattersModule,
     LeadsModule,
+    ConflictsModule,
+    TasksModule,
+    DocumentsModule,
+    TimeEntriesModule,
+    ExpensesModule,
+    InvoicesModule,
+    PaymentsModule,
+    TrustTransactionsModule,
+    CommunicationsModule,
     NotesModule,
     SearchModule,
     DashboardModule,
