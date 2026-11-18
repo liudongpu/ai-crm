@@ -1,69 +1,62 @@
 import { useEffect, useMemo, useState } from 'react';
-import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import {
-  CalendarClock,
-  CalendarDays,
-  CheckCircle2,
-  Mail,
-  Phone,
-  Plus,
-  Target,
-  Trash2,
-  Video,
-} from 'lucide-react';
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  isSameMonth,
+  isToday,
+  isTomorrow,
+  parseISO,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
+} from 'date-fns';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined';
+import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import DeleteOutline from '@mui/icons-material/DeleteOutline';
+import EditOutlined from '@mui/icons-material/EditOutlined';
+import ListAltOutlined from '@mui/icons-material/ListAltOutlined';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import Checkbox from '@mui/material/Checkbox';
+import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControl from '@mui/material/FormControl';
+import IconButton from '@mui/material/IconButton';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
+import Select from '@mui/material/Select';
+import Skeleton from '@mui/material/Skeleton';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
+import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
 import { useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  useActivities,
-  useContacts,
-  useCreateActivity,
-  useDeals,
-  useDeleteActivity,
-  useUpdateActivity,
-} from '@/hooks/useCrm';
-import { cn } from '@/lib/utils';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { PageHeader } from '@/components/common/PageHeader';
+import { useActivities, useContacts, useCreateActivity, useDeals, useDeleteActivity, useUpdateActivity } from '@/hooks/useCrm';
+import { formatDateTime, toLocalInput } from '@/lib/format';
+import { activityMeta } from '@/lib/meta';
 import type { Activity, ActivityInput, ActivityType } from '@/types';
 
-const typeMeta: Record<ActivityType, { label: string; icon: typeof Phone; color: string; bg: string }> = {
-  call: { label: '电话', icon: Phone, color: 'text-sky-600', bg: 'bg-sky-50' },
-  email: { label: '邮件', icon: Mail, color: 'text-violet-600', bg: 'bg-violet-50' },
-  meeting: { label: '会议', icon: Video, color: 'text-amber-600', bg: 'bg-amber-50' },
-  task: { label: '任务', icon: Target, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  deadline: { label: '截止', icon: CalendarClock, color: 'text-rose-600', bg: 'bg-rose-50' },
-};
-
-function toLocalInput(iso?: string | null) {
-  if (!iso) return '';
-  const date = parseISO(iso);
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-}
+type Filter = 'pending' | 'done' | 'all';
+type GroupLabel = '已逾期' | '今天' | '明天' | '未来' | '无日期';
 
 function groupActivities(activities: Activity[]) {
-  const groups: Record<string, Activity[]> = { 已逾期: [], 今天: [], 明天: [], 未来: [], 无日期: [] };
+  const groups: Record<GroupLabel, Activity[]> = { 已逾期: [], 今天: [], 明天: [], 未来: [], 无日期: [] };
   for (const activity of activities) {
     if (!activity.dueDate) {
       groups['无日期'].push(activity);
@@ -78,12 +71,40 @@ function groupActivities(activities: Activity[]) {
   return groups;
 }
 
+function ActivityRow({ activity, onEdit, onDelete }: { activity: Activity; onEdit: () => void; onDelete: () => void }) {
+  const updateActivity = useUpdateActivity();
+  const meta = activityMeta[activity.type];
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.25, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 0 }, '&:hover': { bgcolor: '#fafafa' } }}>
+      <Checkbox size="small" checked={activity.done} onChange={(event) => updateActivity.mutate({ id: activity.id, data: { done: event.target.checked } })} inputProps={{ 'aria-label': '标记完成' }} />
+      <Avatar sx={{ width: 32, height: 32, bgcolor: meta.bg, color: meta.color, fontSize: 12 }}>{meta.label.slice(0, 1)}</Avatar>
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Typography variant="body2" fontWeight={600} sx={{ textDecoration: activity.done ? 'line-through' : 'none', color: activity.done ? 'text.disabled' : 'text.primary' }} noWrap>
+          {activity.subject}
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Chip size="small" variant="outlined" label={meta.label} sx={{ height: 18, fontSize: 10 }} />
+          {activity.deal && <Typography variant="caption" color="text.secondary">{activity.deal.title}</Typography>}
+          {activity.contact && <Typography variant="caption" color="text.secondary">· {activity.contact.name}</Typography>}
+          {activity.notes && <Typography variant="caption" color="text.secondary" noWrap>· {activity.notes}</Typography>}
+        </Box>
+      </Box>
+      <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{formatDateTime(activity.dueDate)}</Typography>
+      <Tooltip title="编辑"><IconButton size="small" onClick={onEdit}><EditOutlined fontSize="small" /></IconButton></Tooltip>
+      <Tooltip title="删除"><IconButton size="small" color="error" onClick={onDelete}><DeleteOutline fontSize="small" /></IconButton></Tooltip>
+    </Box>
+  );
+}
+
 export function ActivitiesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('pending');
+  const [filter, setFilter] = useState<Filter>('pending');
+  const [view, setView] = useState<'list' | 'calendar'>('list');
+  const [month, setMonth] = useState(new Date());
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
   const [form, setForm] = useState<ActivityInput>({ type: 'task', subject: '' });
+  const [confirmId, setConfirmId] = useState<number | null>(null);
 
   const { data: activities, isLoading } = useActivities();
   const { data: deals } = useDeals();
@@ -94,12 +115,23 @@ export function ActivitiesPage() {
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
-      openCreate();
-      searchParams.delete('new');
-      setSearchParams(searchParams, { replace: true });
+      const presetDate = searchParams.get('date');
+      const presetDeal = Number(searchParams.get('dealId')) || null;
+      const presetContact = Number(searchParams.get('contactId')) || null;
+      const dueDate = presetDate ? new Date(`${presetDate}T10:00:00`).toISOString() : new Date(Date.now() + 86_400_000).toISOString();
+      setEditing(null);
+      setForm({ type: 'task', subject: '', dueDate, notes: '', dealId: presetDeal, contactId: presetContact });
+      setFormOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('new');
+      next.delete('date');
+      next.delete('dealId');
+      next.delete('contactId');
+      next.delete('accountId');
+      next.delete('leadId');
+      setSearchParams(next, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString()]);
+  }, [searchParams, setSearchParams]);
 
   const visible = useMemo(() => {
     const list = activities ?? [];
@@ -112,19 +144,11 @@ export function ActivitiesPage() {
   const doneCount = activities?.filter((item) => item.done).length ?? 0;
   const pendingCount = activities?.filter((item) => !item.done).length ?? 0;
 
-  const openCreate = () => {
+  const openCreate = (date?: Date) => {
     setEditing(null);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(10, 0, 0, 0);
-    setForm({
-      type: 'task',
-      subject: '',
-      dueDate: tomorrow.toISOString(),
-      notes: '',
-      dealId: null,
-      contactId: null,
-    });
+    const due = date ? new Date(date) : new Date(Date.now() + 86_400_000);
+    if (!date) due.setHours(10, 0, 0, 0);
+    setForm({ type: 'task', subject: '', dueDate: due.toISOString(), notes: '', dealId: null, contactId: null });
     setFormOpen(true);
   };
 
@@ -142,10 +166,7 @@ export function ActivitiesPage() {
   };
 
   const submit = () => {
-    if (!form.subject?.trim()) {
-      toast.error('请填写活动主题');
-      return;
-    }
+    if (!form.subject?.trim()) return;
     const payload: ActivityInput = {
       ...form,
       subject: form.subject.trim(),
@@ -158,158 +179,169 @@ export function ActivitiesPage() {
     }
   };
 
+  const calendarDays = useMemo(() => {
+    const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
+    const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start, end });
+  }, [month]);
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Tabs value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
-          <TabsList>
-            <TabsTrigger value="pending">待办 <span className="text-xs opacity-60">{pendingCount}</span></TabsTrigger>
-            <TabsTrigger value="done">已完成 <span className="text-xs opacity-60">{doneCount}</span></TabsTrigger>
-            <TabsTrigger value="all">全部</TabsTrigger>
-          </TabsList>
+    <Box>
+      <PageHeader title="活动" subtitle="管理任务、电话、邮件与会议安排" />
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5, mb: 2 }}>
+        <Tabs value={filter} onChange={(_, value) => setFilter(value as Filter)}>
+          <Tab value="pending" label={`待办 (${pendingCount})`} />
+          <Tab value="done" label={`已完成 (${doneCount})`} />
+          <Tab value="all" label="全部" />
         </Tabs>
-        <Button className="ml-auto" onClick={openCreate}><Plus className="h-4 w-4" /> 新活动</Button>
-      </div>
+        <Box sx={{ ml: 'auto', display: 'flex', gap: 1.5 }}>
+          <ButtonGroup size="small" variant="outlined">
+            <Button startIcon={<ListAltOutlined />} variant={view === 'list' ? 'contained' : 'outlined'} onClick={() => setView('list')}>列表</Button>
+            <Button startIcon={<CalendarMonthOutlined />} variant={view === 'calendar' ? 'contained' : 'outlined'} onClick={() => setView('calendar')}>日历</Button>
+          </ButtonGroup>
+          <Button variant="contained" startIcon={<AddOutlined />} onClick={() => openCreate()}>新建活动</Button>
+        </Box>
+      </Box>
 
       {isLoading && (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-16 rounded-xl" />)}
-        </div>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} variant="rounded" height={64} />)}
+        </Box>
       )}
 
-      {!isLoading && (
-        <div className="space-y-5">
-          {Object.entries(groups).map(([label, items]) =>
-            items.length ? (
-              <div key={label}>
-                <div className="mb-2 flex items-center gap-2">
-                  <h3 className={cn('text-sm font-semibold', label === '已逾期' && 'text-destructive')}>{label}</h3>
-                  <span className="rounded-full bg-secondary px-2 text-[11px] text-muted-foreground">{items.length}</span>
-                </div>
-                <div className="overflow-hidden rounded-xl border bg-white">
-                  <div className="divide-y">
-                    {items.map((activity) => {
-                      const meta = typeMeta[activity.type];
-                      const Icon = meta.icon;
-                      return (
-                        <div key={activity.id} className={cn('flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40', activity.done && 'opacity-60')}>
-                          <Checkbox
-                            checked={activity.done}
-                            onCheckedChange={(checked) => updateActivity.mutate({ id: activity.id, data: { done: Boolean(checked) } })}
-                            aria-label="标记完成"
-                          />
-                          <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg', meta.bg, meta.color)}>
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className={cn('truncate text-sm font-medium', activity.done && 'line-through')}>{activity.subject}</p>
-                            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{meta.label}</Badge>
-                              {activity.deal && <span>{activity.deal.title}</span>}
-                              {activity.contact && <span>· {activity.contact.name}</span>}
-                              {activity.notes && <span className="truncate">· {activity.notes}</span>}
-                            </div>
-                          </div>
-                          {activity.dueDate && (
-                            <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                              <CalendarDays className="h-3.5 w-3.5" />
-                              {format(parseISO(activity.dueDate), 'M月d日 HH:mm')}
-                            </span>
-                          )}
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(activity)} title="编辑">
-                            <Target className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              if (window.confirm('确定删除这条活动吗？')) deleteActivity.mutate(activity.id);
-                            }}
-                            title="删除"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+      {!isLoading && view === 'list' && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          {(Object.keys(groups) as GroupLabel[]).map((label) =>
+            groups[label].length ? (
+              <Box key={label}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Typography variant="subtitle1" sx={{ color: label === '已逾期' ? 'error.main' : 'text.primary' }}>{label}</Typography>
+                  <Chip size="small" label={groups[label].length} />
+                </Box>
+                <Paper sx={{ overflow: 'hidden' }}>
+                  {groups[label].map((activity) => (
+                    <ActivityRow key={activity.id} activity={activity} onEdit={() => openEdit(activity)} onDelete={() => setConfirmId(activity.id)} />
+                  ))}
+                </Paper>
+              </Box>
             ) : null,
           )}
           {visible.length === 0 && (
-            <div className="rounded-xl border border-dashed py-20 text-center">
-              <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-400" />
-              <p className="mt-3 text-sm font-medium">太棒了，当前没有待办活动</p>
-              <p className="mt-1 text-xs text-muted-foreground">点击右上角「新活动」安排下一次跟进。</p>
-            </div>
+            <Paper sx={{ textAlign: 'center', py: 8, borderStyle: 'dashed' }}>
+              <CheckCircleOutline sx={{ fontSize: 44, color: 'success.main' }} />
+              <Typography variant="subtitle1" sx={{ mt: 1 }}>太棒了，当前没有待办活动</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>点击「新建活动」安排下一次跟进。</Typography>
+            </Paper>
           )}
-        </div>
+        </Box>
       )}
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? '编辑活动' : '新建活动'}</DialogTitle>
-            <DialogDescription>安排跟进任务，不错过任何成交机会。</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>活动类型</Label>
-              <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value as ActivityType })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(typeMeta) as ActivityType[]).map((type) => (
-                    <SelectItem key={type} value={type}>{typeMeta[type].label}</SelectItem>
-                  ))}
-                </SelectContent>
+      {!isLoading && view === 'calendar' && (
+        <Paper sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <IconButton size="small" onClick={() => setMonth(subMonths(month, 1))} aria-label="上个月"><ChevronLeft /></IconButton>
+            <Typography variant="h6">{format(month, 'yyyy年 M月')}</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Button size="small" variant="text" onClick={() => setMonth(new Date())}>今天</Button>
+              <IconButton size="small" onClick={() => setMonth(addMonths(month, 1))} aria-label="下个月"><ChevronRight /></IconButton>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
+            {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day) => (
+              <Box key={day} sx={{ p: 1, textAlign: 'center', bgcolor: '#f7f7f7', borderRight: '1px solid', borderBottom: '1px solid', borderColor: 'divider', fontWeight: 700, fontSize: 12 }}>
+                {day}
+              </Box>
+            ))}
+            {calendarDays.map((day) => {
+              const dayActivities = visible.filter((item) => item.dueDate && isSameDay(parseISO(item.dueDate), day));
+              return (
+                <Box
+                  key={day.toISOString()}
+                  sx={{
+                    minHeight: 96,
+                    p: 0.75,
+                    borderRight: '1px solid',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: isSameMonth(day, month) ? '#fff' : '#fafafa',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: '#f3f9ff' },
+                    '&:nth-child(7n)': { borderRight: 0 },
+                  }}
+                  onClick={() => openCreate(day)}
+                >
+                  <Typography variant="caption" sx={{ fontWeight: isToday(day) ? 700 : 400, color: isToday(day) ? 'primary.main' : isSameMonth(day, month) ? 'text.primary' : 'text.disabled' }}>
+                    {format(day, 'd')}
+                  </Typography>
+                  <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                    {dayActivities.slice(0, 3).map((activity) => {
+                      const meta = activityMeta[activity.type];
+                      return (
+                        <Box key={activity.id} sx={{ bgcolor: meta.bg, color: meta.color, borderRadius: 0.5, px: 0.5, py: 0.25, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={(event) => { event.stopPropagation(); openEdit(activity); }}>
+                          {format(parseISO(activity.dueDate!), 'HH:mm')} {activity.subject}
+                        </Box>
+                      );
+                    })}
+                    {dayActivities.length > 3 && <Typography variant="caption" color="text.secondary">还有 {dayActivities.length - 3} 项</Typography>}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </Paper>
+      )}
+
+      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editing ? '编辑活动' : '新建活动'}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel id="activity-type">活动类型</InputLabel>
+              <Select labelId="activity-type" label="活动类型" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as ActivityType })}>
+                {(Object.keys(activityMeta) as ActivityType[]).map((type) => <MenuItem key={type} value={type}>{activityMeta[type].label}</MenuItem>)}
               </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="activity-due">日期时间</Label>
-              <Input
-                id="activity-due"
-                type="datetime-local"
-                value={toLocalInput(form.dueDate)}
-                onChange={(e) => setForm({ ...form, dueDate: e.target.value ? new Date(e.target.value).toISOString() : null })}
-              />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="activity-subject">活动主题 *</Label>
-              <Input id="activity-subject" value={form.subject ?? ''} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="例如：致电客户确认方案" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>关联交易</Label>
-              <Select value={form.dealId ? String(form.dealId) : 'none'} onValueChange={(value) => setForm({ ...form, dealId: value === 'none' ? null : Number(value) })}>
-                <SelectTrigger><SelectValue placeholder="选择交易" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">未关联</SelectItem>
-                  {deals?.map((deal) => <SelectItem key={deal.id} value={String(deal.id)}>{deal.title}</SelectItem>)}
-                </SelectContent>
+            </FormControl>
+            <TextField
+              label="日期时间"
+              type="datetime-local"
+              value={toLocalInput(form.dueDate)}
+              onChange={(event) => setForm({ ...form, dueDate: event.target.value ? new Date(event.target.value).toISOString() : null })}
+              slotProps={{ inputLabel: { shrink: true } }}
+              fullWidth
+            />
+          </Box>
+          <TextField label="活动主题 *" value={form.subject ?? ''} onChange={(event) => setForm({ ...form, subject: event.target.value })} fullWidth autoFocus />
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel id="activity-deal">关联商机</InputLabel>
+              <Select labelId="activity-deal" label="关联商机" value={form.dealId ? String(form.dealId) : ''} onChange={(event) => setForm({ ...form, dealId: event.target.value ? Number(event.target.value) : null })}>
+                <MenuItem value="">未关联</MenuItem>
+                {deals?.map((deal) => <MenuItem key={deal.id} value={String(deal.id)}>{deal.title}</MenuItem>)}
               </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>关联联系人</Label>
-              <Select value={form.contactId ? String(form.contactId) : 'none'} onValueChange={(value) => setForm({ ...form, contactId: value === 'none' ? null : Number(value) })}>
-                <SelectTrigger><SelectValue placeholder="选择联系人" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">未关联</SelectItem>
-                  {contacts?.map((contact) => <SelectItem key={contact.id} value={String(contact.id)}>{contact.name}</SelectItem>)}
-                </SelectContent>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel id="activity-contact">关联联系人</InputLabel>
+              <Select labelId="activity-contact" label="关联联系人" value={form.contactId ? String(form.contactId) : ''} onChange={(event) => setForm({ ...form, contactId: event.target.value ? Number(event.target.value) : null })}>
+                <MenuItem value="">未关联</MenuItem>
+                {contacts?.map((contact) => <MenuItem key={contact.id} value={String(contact.id)}>{contact.name}</MenuItem>)}
               </Select>
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="activity-notes">备注</Label>
-              <Textarea id="activity-notes" value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="补充活动说明..." />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
-            <Button onClick={submit} disabled={createActivity.isPending || updateActivity.isPending}>保存</Button>
-          </DialogFooter>
+            </FormControl>
+          </Box>
+          <TextField label="备注" value={form.notes ?? ''} onChange={(event) => setForm({ ...form, notes: event.target.value })} multiline minRows={3} fullWidth />
         </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFormOpen(false)} color="inherit">取消</Button>
+          <Button variant="contained" onClick={submit} disabled={!form.subject?.trim() || createActivity.isPending || updateActivity.isPending}>保存</Button>
+        </DialogActions>
       </Dialog>
-    </div>
+
+      <ConfirmDialog
+        open={confirmId !== null}
+        title="删除活动"
+        message="确定删除这条活动吗？"
+        onClose={() => setConfirmId(null)}
+        onConfirm={() => confirmId !== null && deleteActivity.mutate(confirmId, { onSuccess: () => setConfirmId(null) })}
+      />
+    </Box>
   );
 }

@@ -2,7 +2,7 @@
   "name": "ai-crm",
   "version": "0.1.0",
   "private": true,
-  "description": "Pipedrive-style CRM built with NestJS, TypeORM, SQLite, React, Vite, Tailwind CSS and shadcn/ui",
+  "description": "Salesforce-style CRM built with NestJS, TypeORM, SQLite, React, Vite and Material UI",
   "workspaces": [
     "apps/api",
     "apps/web"
@@ -12,7 +12,7 @@
     "dev:api": "npm run start:dev -w @ai-crm/api",
     "dev:web": "npm run dev -w @ai-crm/web",
     "build": "npm run build -w @ai-crm/api && npm run build -w @ai-crm/web",
-    "start": "npm run start:prod -w @ai-crm/api",
+    "start": "npm run build && npm run start:prod -w @ai-crm/api",
     "typecheck": "npm run typecheck -w @ai-crm/api && npm run typecheck -w @ai-crm/web"
   },
   "devDependencies": {

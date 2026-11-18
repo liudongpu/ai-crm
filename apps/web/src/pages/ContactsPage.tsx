@@ -1,46 +1,49 @@
 import { useEffect, useMemo, useState } from 'react';
-import { format, parseISO } from 'date-fns';
-import { Building2, Mail, Phone, Plus, Search, Trash2, UserRound } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  useCompanies,
-  useContacts,
-  useCreateContact,
-  useDeleteContact,
-  useUpdateContact,
-} from '@/hooks/useCrm';
-import { avatarColor, initials } from '@/lib/utils';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import DeleteOutline from '@mui/icons-material/DeleteOutline';
+import EditOutlined from '@mui/icons-material/EditOutlined';
+import SearchIcon from '@mui/icons-material/Search';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControl from '@mui/material/FormControl';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
+import Select from '@mui/material/Select';
+import Skeleton from '@mui/material/Skeleton';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { PageHeader } from '@/components/common/PageHeader';
+import { useCompanies, useContacts, useCreateContact, useDeleteContact, useUpdateContact } from '@/hooks/useCrm';
+import { avatarColor, formatDate, initials } from '@/lib/format';
 import type { Contact, ContactInput } from '@/types';
+
+const emptyForm: ContactInput = { name: '', email: '', phone: '', position: '', companyId: null, owner: '销售团队' };
 
 export function ContactsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Contact | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Contact | null>(null);
-  const [form, setForm] = useState<ContactInput>({ name: '' });
+  const [form, setForm] = useState<ContactInput>(emptyForm);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   const { data: contacts, isLoading } = useContacts();
   const { data: companies } = useCompanies();
@@ -50,16 +53,17 @@ export function ContactsPage() {
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
-      openCreate();
+      setEditing(null);
+      setForm({ ...emptyForm, companyId: searchParams.get('companyId') ? Number(searchParams.get('companyId')) : null });
+      setFormOpen(true);
       searchParams.delete('new');
+      searchParams.delete('companyId');
       setSearchParams(searchParams, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString(), companies]);
+  }, [searchParams, setSearchParams]);
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return contacts ?? [];
     return (contacts ?? []).filter((contact) =>
       [contact.name, contact.email, contact.phone, contact.company?.name]
         .filter(Boolean)
@@ -69,12 +73,11 @@ export function ContactsPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', email: '', phone: '', position: '', companyId: null, owner: '销售团队' });
+    setForm(emptyForm);
     setFormOpen(true);
   };
 
   const openEdit = (contact: Contact) => {
-    setSelected(null);
     setEditing(contact);
     setForm({
       name: contact.name,
@@ -88,17 +91,8 @@ export function ContactsPage() {
   };
 
   const submit = () => {
-    if (!form.name?.trim()) {
-      toast.error('请填写联系人姓名');
-      return;
-    }
-    const payload = {
-      ...form,
-      name: form.name.trim(),
-      email: form.email || null,
-      phone: form.phone || null,
-      position: form.position || null,
-    };
+    if (!form.name?.trim()) return;
+    const payload = { ...form, name: form.name.trim(), email: form.email || null, phone: form.phone || null, position: form.position || null };
     if (editing) {
       updateContact.mutate({ id: editing.id, data: payload }, { onSuccess: () => setFormOpen(false) });
     } else {
@@ -107,151 +101,94 @@ export function ContactsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">全部联系人</h2>
-          <p className="text-xs text-muted-foreground">共 {contacts?.length ?? 0} 位联系人</p>
-        </div>
-        <div className="relative ml-auto w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索姓名、邮箱、公司..." className="pl-9" />
-        </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4" /> 新联系人</Button>
-      </div>
+    <Box>
+      <PageHeader
+        title="联系人"
+        subtitle={`共 ${contacts?.length ?? 0} 位联系人 · 维护客户沟通网络`}
+        actions={
+          <>
+            <TextField size="small" placeholder="搜索姓名、邮箱、公司..." value={search} onChange={(event) => setSearch(event.target.value)} slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }} sx={{ width: { xs: 160, sm: 260 } }} />
+            <Button variant="contained" startIcon={<AddOutlined />} onClick={openCreate}>新建联系人</Button>
+          </>
+        }
+      />
 
-      <div className="overflow-hidden rounded-xl border bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-xs text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">联系人</th>
-              <th className="px-4 py-3 text-left font-medium">职位</th>
-              <th className="px-4 py-3 text-left font-medium">公司</th>
-              <th className="px-4 py-3 text-left font-medium">联系方式</th>
-              <th className="px-4 py-3 text-left font-medium">负责人</th>
-              <th className="px-4 py-3 text-left font-medium">添加时间</th>
-              <th className="w-12" />
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {isLoading &&
-              Array.from({ length: 6 }).map((_, index) => (
-                <tr key={index}><td colSpan={7} className="px-4 py-3"><Skeleton className="h-8 w-full" /></td></tr>
-              ))}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>联系人</TableCell>
+              <TableCell>职位</TableCell>
+              <TableCell>客户公司</TableCell>
+              <TableCell>邮箱</TableCell>
+              <TableCell>电话</TableCell>
+              <TableCell>负责人</TableCell>
+              <TableCell>添加时间</TableCell>
+              <TableCell align="right">操作</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading && Array.from({ length: 6 }).map((_, index) => (
+              <TableRow key={index}><TableCell colSpan={8}><Skeleton height={32} /></TableCell></TableRow>
+            ))}
             {filtered.map((contact) => (
-              <tr key={contact.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelected(contact)}>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback className={avatarColor(contact.name)}>{initials(contact.name)}</AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium">{contact.name}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{contact.position ?? '-'}</td>
-                <td className="px-4 py-3">
-                  {contact.company ? <Badge variant="outline">{contact.company.name}</Badge> : <span className="text-muted-foreground">-</span>}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="space-y-0.5 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5"><Mail className="h-3 w-3" />{contact.email ?? '-'}</div>
-                    <div className="flex items-center gap-1.5"><Phone className="h-3 w-3" />{contact.phone ?? '-'}</div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{contact.owner}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">{format(parseISO(contact.createdAt), 'yyyy-MM-dd')}</td>
-                <td className="px-4 py-3 text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (window.confirm(`确定删除联系人「${contact.name}」吗？`)) deleteContact.mutate(contact.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </td>
-              </tr>
+              <TableRow key={contact.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/contacts/${contact.id}`)}>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Avatar sx={{ width: 32, height: 32, fontSize: 12, bgcolor: avatarColor(contact.name) }}>{initials(contact.name)}</Avatar>
+                    <Typography variant="body2" fontWeight={600}>{contact.name}</Typography>
+                  </Box>
+                </TableCell>
+                <TableCell>{contact.position ?? '—'}</TableCell>
+                <TableCell>{contact.company ? <Chip size="small" variant="outlined" label={contact.company.name} /> : '—'}</TableCell>
+                <TableCell sx={{ color: 'text.secondary' }}>{contact.email ?? '—'}</TableCell>
+                <TableCell sx={{ color: 'text.secondary' }}>{contact.phone ?? '—'}</TableCell>
+                <TableCell>{contact.owner}</TableCell>
+                <TableCell sx={{ color: 'text.secondary' }}>{formatDate(contact.createdAt)}</TableCell>
+                <TableCell align="right" onClick={(event) => event.stopPropagation()}>
+                  <IconButton size="small" onClick={() => openEdit(contact)} aria-label="编辑"><EditOutlined fontSize="small" /></IconButton>
+                  <IconButton size="small" color="error" onClick={() => setConfirmId(contact.id)} aria-label="删除"><DeleteOutline fontSize="small" /></IconButton>
+                </TableCell>
+              </TableRow>
             ))}
             {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={7} className="py-12 text-center text-muted-foreground">没有找到联系人</td></tr>
+              <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6, color: 'text.secondary' }}>没有找到联系人</TableCell></TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? '编辑联系人' : '新建联系人'}</DialogTitle>
-            <DialogDescription>完善联系人信息，方便后续跟进。</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="contact-name">姓名 *</Label>
-              <Input id="contact-name" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="contact-position">职位</Label>
-              <Input id="contact-position" value={form.position ?? ''} onChange={(e) => setForm({ ...form, position: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="contact-email">邮箱</Label>
-              <Input id="contact-email" type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="contact-phone">电话</Label>
-              <Input id="contact-phone" value={form.phone ?? ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>所属公司</Label>
-              <Select value={form.companyId ? String(form.companyId) : 'none'} onValueChange={(value) => setForm({ ...form, companyId: value === 'none' ? null : Number(value) })}>
-                <SelectTrigger><SelectValue placeholder="选择公司" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">未关联</SelectItem>
-                  {companies?.map((company) => <SelectItem key={company.id} value={String(company.id)}>{company.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
-            <Button onClick={submit} disabled={createContact.isPending || updateContact.isPending}>保存</Button>
-          </DialogFooter>
+      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editing ? '编辑联系人' : '新建联系人'}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <TextField label="姓名 *" value={form.name ?? ''} onChange={(event) => setForm({ ...form, name: event.target.value })} autoFocus />
+            <TextField label="职位" value={form.position ?? ''} onChange={(event) => setForm({ ...form, position: event.target.value })} />
+            <TextField label="邮箱" type="email" value={form.email ?? ''} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+            <TextField label="电话" value={form.phone ?? ''} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+          </Box>
+          <FormControl fullWidth>
+            <InputLabel id="contact-company">客户公司</InputLabel>
+            <Select labelId="contact-company" label="客户公司" value={form.companyId ? String(form.companyId) : ''} onChange={(event) => setForm({ ...form, companyId: event.target.value ? Number(event.target.value) : null })}>
+              <MenuItem value="">未关联</MenuItem>
+              {companies?.map((company) => <MenuItem key={company.id} value={String(company.id)}>{company.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <TextField label="负责人" value={form.owner ?? ''} onChange={(event) => setForm({ ...form, owner: event.target.value })} />
         </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFormOpen(false)} color="inherit">取消</Button>
+          <Button variant="contained" onClick={submit} disabled={!form.name?.trim() || createContact.isPending || updateContact.isPending}>保存</Button>
+        </DialogActions>
       </Dialog>
 
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent>
-          {selected && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className={avatarColor(selected.name)}>{initials(selected.name)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <DialogTitle>{selected.name}</DialogTitle>
-                    <DialogDescription>{selected.position ?? '联系人'} · {selected.company?.name ?? '未关联公司'}</DialogDescription>
-                  </div>
-                </div>
-              </DialogHeader>
-              <div className="grid gap-3 rounded-lg border p-4 text-sm">
-                <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" />{selected.email ?? '-'}</div>
-                <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{selected.phone ?? '-'}</div>
-                <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" />{selected.company?.industry ?? '未填写行业'}</div>
-                <div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-muted-foreground" />负责人：{selected.owner}</div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setSelected(null)}>关闭</Button>
-                <Button onClick={() => openEdit(selected)}>编辑资料</Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+      <ConfirmDialog
+        open={confirmId !== null}
+        title="删除联系人"
+        message="确定删除该联系人吗？"
+        onClose={() => setConfirmId(null)}
+        onConfirm={() => confirmId !== null && deleteContact.mutate(confirmId, { onSuccess: () => setConfirmId(null) })}
+      />
+    </Box>
   );
 }

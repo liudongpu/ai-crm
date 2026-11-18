@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, ParseIntPipe, Query } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 
 @Controller('dashboard')
@@ -8,5 +8,10 @@ export class DashboardController {
   @Get('summary')
   summary() {
     return this.service.summary();
+  }
+
+  @Get('reports')
+  reports(@Query('days', new ParseIntPipe({ optional: true })) days?: number) {
+    return this.service.reports(days);
   }
 }

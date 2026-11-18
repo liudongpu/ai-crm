@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Activity, Company, Contact, Deal, Pipeline, Stage } from './entities';
+import { Activity, Company, Contact, Deal, Lead, Note, Pipeline, Stage } from './entities';
 
 const STAGES = [
   { name: '新线索', color: '#94a3b8', probability: 10 },
@@ -91,6 +91,100 @@ const ACTIVITIES: Array<{
   { type: 'task', subject: '更新销售漏斗数据', inDays: -1, hour: 16, done: true },
 ];
 
+const LEADS: Array<{
+  name: string;
+  company: string;
+  title: string;
+  email: string;
+  phone: string;
+  status: Lead['status'];
+  source: string;
+  rating: Lead['rating'];
+  description: string;
+  owner?: string;
+  convertedContact?: string;
+  convertedDeal?: string;
+  convertedDaysAgo?: number;
+}> = [
+  {
+    name: '张沐', company: '远景能源', title: '数字化负责人',
+    email: 'zhang.mu@yuanjing.example.com', phone: '138 0000 1301',
+    status: 'new', source: '官网咨询', rating: 'warm',
+    description: '希望了解客户画像与线索评分能力，计划下季度启动选型。',
+  },
+  {
+    name: '李文博', company: '汇通金服', title: 'IT 总监',
+    email: 'li.wenbo@huitong.example.com', phone: '138 0000 1302',
+    status: 'working', source: '客户推荐', rating: 'hot',
+    description: '正在对比三家供应商，重点关注数据中台的实施周期与报价。', owner: '王慧',
+  },
+  {
+    name: '周雅琴', company: '新锐医疗', title: '运营副总裁',
+    email: 'zhou.yaqin@xinrui.example.com', phone: '138 0000 1303',
+    status: 'qualified', source: '展会', rating: 'hot',
+    description: '预算已确认，需要尽快安排售前演示与方案讲解。',
+  },
+  {
+    name: '陈思远', company: '星云科技', title: '采购总监',
+    email: 'chen.siyuan@xingyun.example.com', phone: '138 0000 1201',
+    status: 'converted', source: '官网咨询', rating: 'hot',
+    description: '已签约年度授权，目前进入实施阶段。',
+    convertedContact: '陈思远', convertedDeal: 'CRM 系统年度授权', convertedDaysAgo: 18,
+  },
+  {
+    name: '林晓', company: '云图数据', title: '技术负责人',
+    email: 'lin.xiao@yuntu.example.com', phone: '138 0000 1202',
+    status: 'converted', source: '客户推荐', rating: 'warm',
+    description: '数据中台一期项目已完成商务确认，后续跟进二期规划。',
+    convertedContact: '林晓', convertedDeal: '数据中台一期建设', convertedDaysAgo: 9,
+  },
+  {
+    name: '方敏', company: '德昌制造', title: '信息化主管',
+    email: 'fang.min@dechang.example.com', phone: '138 0000 1306',
+    status: 'unqualified', source: '电话开发', rating: 'cold',
+    description: '本年度暂无预算，计划明年一季度再重新跟进。',
+  },
+];
+
+const NOTES: Array<{
+  title: string;
+  content: string;
+  targetType: Note['targetType'];
+  targetName: string;
+  owner?: string;
+}> = [
+  {
+    title: '客户年度预算与决策链',
+    content: '星云科技本年度数字化预算已审批，采购总监陈思远为决策人，财务经理何静参与合同评审。',
+    targetType: 'account', targetName: '星云科技', owner: '王慧',
+  },
+  {
+    title: '数据中台项目背景',
+    content: '云图数据希望打通多个业务系统的数据孤岛，一期重点建设统一指标平台，二期考虑智能化分析。',
+    targetType: 'account', targetName: '云图数据',
+  },
+  {
+    title: '联系人跟进偏好',
+    content: '王磊偏好邮件沟通，通常在工作日晚上回复；下次沟通需准备技术架构与实施案例材料。',
+    targetType: 'contact', targetName: '王磊', owner: '王慧',
+  },
+  {
+    title: '技术评估关注点',
+    content: '林晓重点关注系统兼容性、数据迁移方案以及私有化部署的资源需求。',
+    targetType: 'contact', targetName: '林晓',
+  },
+  {
+    title: '投标材料清单',
+    content: '供应链协同平台投标需准备资质文件、同类客户案例、实施计划与三年报价明细。',
+    targetType: 'opportunity', targetName: '供应链协同平台', owner: '王慧',
+  },
+  {
+    title: '赢单复盘',
+    content: '客户画像分析项目顺利赢单，关键在于前期提供了精准的行业标杆案例与快速 POC 支持。',
+    targetType: 'opportunity', targetName: '客户画像分析项目',
+  },
+];
+
 @Injectable()
 export class SeedService {
   private readonly logger = new Logger(SeedService.name);
@@ -102,11 +196,19 @@ export class SeedService {
     @InjectRepository(Contact) private readonly contacts: Repository<Contact>,
     @InjectRepository(Deal) private readonly deals: Repository<Deal>,
     @InjectRepository(Activity) private readonly activities: Repository<Activity>,
+    @InjectRepository(Lead) private readonly leads: Repository<Lead>,
+    @InjectRepository(Note) private readonly notes: Repository<Note>,
   ) {}
 
   async seed() {
-    if ((await this.pipelines.count()) > 0) return;
+    if ((await this.pipelines.count()) === 0) {
+      await this.seedCore();
+    }
+    await this.seedLeads();
+    await this.seedNotes();
+  }
 
+  private async seedCore() {
     this.logger.log('首次启动，正在初始化演示数据...');
 
     const pipeline = await this.pipelines.save(this.pipelines.create({ name: '标准销售流程' }));
@@ -182,9 +284,80 @@ export class SeedService {
     this.logger.log('演示数据初始化完成。');
   }
 
+  private async seedLeads() {
+    if ((await this.leads.count()) > 0) return;
+
+    this.logger.log('正在初始化潜在客户演示数据...');
+    for (const lead of LEADS) {
+      const contact = lead.convertedContact
+        ? await this.contacts.findOne({ where: { name: lead.convertedContact } })
+        : null;
+      const deal = lead.convertedDeal
+        ? await this.deals.findOne({ where: { title: lead.convertedDeal } })
+        : null;
+
+      await this.leads.save(
+        this.leads.create({
+          name: lead.name,
+          company: lead.company,
+          title: lead.title,
+          email: lead.email,
+          phone: lead.phone,
+          status: lead.status,
+          source: lead.source,
+          rating: lead.rating,
+          description: lead.description,
+          owner: lead.owner ?? '销售团队',
+          convertedAt: lead.convertedDaysAgo !== undefined ? this.dateDaysAgo(lead.convertedDaysAgo) : null,
+          convertedContactId: contact?.id ?? null,
+          convertedDealId: deal?.id ?? null,
+        }),
+      );
+    }
+  }
+
+  private async seedNotes() {
+    if ((await this.notes.count()) > 0) return;
+
+    this.logger.log('正在初始化备注演示数据...');
+    for (const note of NOTES) {
+      const targetId = await this.findTargetId(note.targetType, note.targetName);
+      if (!targetId) continue;
+
+      await this.notes.save(
+        this.notes.create({
+          title: note.title,
+          content: note.content,
+          targetType: note.targetType,
+          targetId,
+          owner: note.owner ?? '销售团队',
+        }),
+      );
+    }
+  }
+
+  private async findTargetId(targetType: Note['targetType'], name: string) {
+    if (targetType === 'account') {
+      return (await this.companies.findOne({ where: { name } }))?.id ?? null;
+    }
+    if (targetType === 'contact') {
+      return (await this.contacts.findOne({ where: { name } }))?.id ?? null;
+    }
+    if (targetType === 'opportunity') {
+      return (await this.deals.findOne({ where: { title: name } }))?.id ?? null;
+    }
+    return null;
+  }
+
   private dateIn(days: number) {
     const date = new Date();
     date.setDate(date.getDate() + days);
     return date.toISOString().slice(0, 10);
+  }
+
+  private dateDaysAgo(days: number) {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date;
   }
 }

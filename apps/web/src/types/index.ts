@@ -59,6 +59,8 @@ export interface Deal {
   updatedAt: string;
 }
 
+export type DealStatus = 'open' | 'won' | 'lost';
+
 export type ActivityType = 'call' | 'email' | 'meeting' | 'task' | 'deadline';
 
 export interface Activity {
@@ -74,6 +76,68 @@ export interface Activity {
   contact: Contact | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type LeadStatus = 'new' | 'working' | 'qualified' | 'converted' | 'unqualified';
+export type LeadRating = 'hot' | 'warm' | 'cold';
+
+export interface Lead {
+  id: number;
+  name: string;
+  company: string;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+  status: LeadStatus;
+  source: string | null;
+  rating: LeadRating;
+  description: string | null;
+  owner: string;
+  convertedAt: string | null;
+  convertedContactId: number | null;
+  convertedDealId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type NoteTargetType = 'account' | 'contact' | 'lead' | 'opportunity';
+
+export interface Note {
+  id: number;
+  title: string;
+  content: string | null;
+  targetType: NoteTargetType;
+  targetId: number;
+  owner: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SearchResults {
+  accounts: Company[];
+  contacts: Contact[];
+  leads: Lead[];
+  opportunities: Deal[];
+}
+
+export interface ReportData {
+  metrics: {
+    openDeals: number;
+    wonDeals: number;
+    lostDeals: number;
+    pipelineValue: number;
+    wonValue: number;
+    winRate: number;
+    leads: number;
+    convertedLeads: number;
+    activitiesDue: number;
+  };
+  dealsByStage: Array<{ id: number; name: string; color: string; count: number; value: number }>;
+  wonByMonth: Array<{ month: string; value: number; count: number }>;
+  activitiesByType: Array<{ type: string; count: number }>;
+  dealsByOwner: Array<{ owner: string; value: number; count: number }>;
+  leadsByStatus: Array<{ status: string; count: number }>;
+  topAccounts: Array<{ name: string; value: number; deals: number }>;
 }
 
 export interface DashboardSummary {
@@ -101,14 +165,21 @@ export interface DashboardSummary {
   upcomingActivities: Activity[];
 }
 
-export type DealInput = Partial<Pick<Deal,
-  'title' | 'value' | 'currency' | 'priority' | 'status' | 'source' | 'expectedCloseDate' |
-  'stageId' | 'pipelineId' | 'contactId' | 'companyId'
->> & { title: string; value: number };
+export type DealInput = Partial<
+  Pick<
+    Deal,
+    'title' | 'value' | 'currency' | 'priority' | 'status' | 'source' | 'expectedCloseDate' |
+    'stageId' | 'pipelineId' | 'contactId' | 'companyId'
+  >
+> & { title: string; value: number };
 
-export type ContactInput = Partial<Pick<Contact, 'name' | 'email' | 'phone' | 'position' | 'owner' | 'companyId'>> & { name: string };
+export type ContactInput = Partial<Pick<Contact, 'name' | 'email' | 'phone' | 'position' | 'owner' | 'companyId'>> & {
+  name: string;
+};
 
-export type CompanyInput = Partial<Pick<Company, 'name' | 'industry' | 'website' | 'phone' | 'address'>> & { name: string };
+export type CompanyInput = Partial<Pick<Company, 'name' | 'industry' | 'website' | 'phone' | 'address'>> & {
+  name: string;
+};
 
 export type ActivityInput = {
   type: ActivityType;
@@ -118,4 +189,14 @@ export type ActivityInput = {
   notes?: string;
   dealId?: number | null;
   contactId?: number | null;
+};
+
+export type LeadInput = Partial<
+  Pick<Lead, 'name' | 'company' | 'title' | 'email' | 'phone' | 'status' | 'source' | 'rating' | 'description' | 'owner'>
+> & { name: string; company: string };
+
+export type NoteInput = Partial<Pick<Note, 'title' | 'content' | 'targetType' | 'targetId' | 'owner'>> & {
+  title: string;
+  targetType: NoteTargetType;
+  targetId: number;
 };
