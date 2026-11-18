@@ -27,5 +27,12 @@
 - 排查并修复全部菜单路由冲突：案件管理「任务与流程」改用独立 `/tasks` 真实任务管理页（原 `/calendar` 与日程管理「日历管理」冲突），计费「账单生成」改用 `/billing?tab=invoices&new=1` 与「发票与发送」区分，信托「在线支付」改回 `/features/payment_online` 通用功能页；将导航解析抽离到 `lib/navigation.ts`，按精确路径、查询参数、最长路径依次匹配，并让模块首页优先真实业务页面；验证 82 个二级功能路由唯一、解析到自身与正确一级模块、页面全部 200，日程与核心业务回归通过。
 - 将剩余 64 个二级功能全部真实化，彻底移除通用「功能记录」占位页（删除 `FeaturePage.tsx` 与 `/features/:featureCode` 路由）：后端新增「可扩展工作台」领域（`WorkspaceModule`、`WorkspaceItem`/`WorkspaceSetting` 实体、`/api/workspace/definitions|items|stats|settings` REST 接口），为 64 个功能各自定义专属字段 schema、状态机、统计口径与本地配置开关；种子按 schema 生成真实演示记录与配置。前端新增 `WorkspacePage`，按功能定义渲染专属表单字段、状态流转、动态列表列、详情抽屉、统计卡片与本地配置台，64 个功能使用 `/workspace/<编码>` 独立具体路由。全量 typecheck 与生产构建通过。
 
+- 参照 `doc/Law-Firm-OS-5-10-People-Complete-With-Communication.md` 完成 M7 沟通中心升级与跨模块联动：沟通实体新增会话键、渠道、未读/已回复/需跟进/内部备注/AI 草稿/审批/模板/附件字段；新增 `MessageTemplate` 实体与 8 个消息模板种子；后端提供会话聚合（`/api/communications/inbox`）、全文筛选、整段会话归档、标记已读/已回复、需跟进切换、本地规则 AI 起草与模板 CRUD；前端将沟通记录页重写为统一收件箱（会话列表 + 消息对话视图 + 回复/内部备注 + 模板 + AI 起草 + 人工确认关卡 + 归档对话框）。未回复/需跟进沟通接入工作台风险预警与顶部未读角标，案件详情沟通页保留入口。
+- 跨模块补强：时间记录新增计时器（TimeEntry.timerStartedAt + 后端 start/stop/running 接口 + 前端实时计时控件）；任务新增任务模板实体与 5 个种子模板，支持一键生成任务；账单发送增加"必须先审批通过"的后端校验与前端禁用提示；工作台风险预警扩展为沟通未回复/需跟进、7 天内期限/庭审、逾期账单四类。
+- 案件详情新增「当事人与团队」页签（M3）：新增 MatterParty / MatterTeamMember 实体与 `/api/matters/:id/parties|team` CRUD，种子为案件生成原告/被告/第三人及主办/协办/助理；案件团队同时作为回复客户消息的可见范围约束。
+- 设置页新增「角色权限」矩阵（M6）：新增 RolePermission 实体与 `/api/permissions` CRUD，种子写入 5 角色 × 8 项权限；账单审批与沟通内部备注接入角色校验，非法角色返回 403。
+- 报表页新增 5 张核心报表（M1）：后端 `/api/dashboard/core-reports` 提供收入、应收（账龄）、工时（本周/本月、可计费/不可计费）、案件（领域/主办律师）、客户（新增与收入贡献）数据，前端以独立页签展示。
+- 全量 typecheck、生产构建通过；重置演示库后 12/82 功能目录、页面路由、核心 API、M7 与跨模块写入路径冒烟回归通过。
+
 ## 2026-11-08 
 - 项目初始化。

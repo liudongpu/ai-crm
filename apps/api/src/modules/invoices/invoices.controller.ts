@@ -41,8 +41,8 @@ export class InvoicesController {
   }
 
   @Post(':id/approve')
-  approve(@Param('id', ParseIntPipe) id: number) {
-    return this.service.approve(id);
+  approve(@Param('id', ParseIntPipe) id: number, @Body() body: { actorId?: number }) {
+    return this.service.approve(id, body?.actorId);
   }
 
   @Post(':id/send')

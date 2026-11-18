@@ -42,7 +42,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import { useDashboard, useFeatureCatalog, useSearch, useUsers } from '@/hooks/useCrm';
+import { useDashboard, useFeatureCatalog, useInbox, useSearch, useUsers } from '@/hooks/useCrm';
 import { recordPath, useRecent, type RecentType } from '@/hooks/useRecent';
 import { avatarColor, initials } from '@/lib/format';
 import { moduleHref, resolveNavigation, type Navigation } from '@/lib/navigation';
@@ -284,6 +284,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
   const currentUser = users?.[0];
   const dueCount = dashboard?.metrics.tasksDue ?? 0;
+  const { data: inbox } = useInbox();
+  const unreadCount = useMemo(() => (inbox ?? []).reduce((sum, conversation) => sum + conversation.unread, 0), [inbox]);
   const [createAnchor, setCreateAnchor] = useState<HTMLElement | null>(null);
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -304,6 +306,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Box sx={{ flexGrow: 1 }} />
           <Tooltip title="快速新建">
             <IconButton color="inherit" aria-label="快速新建" onClick={(event) => setCreateAnchor(event.currentTarget)}><AddOutlined /></IconButton>
+          </Tooltip>
+          <Tooltip title={`沟通中心 · ${unreadCount} 条未读`}>
+            <IconButton color="inherit" aria-label="沟通中心" onClick={() => navigate('/communications')}>
+              <Badge badgeContent={unreadCount} color="error" max={99}><EmailOutlined /></Badge>
+            </IconButton>
           </Tooltip>
           <Tooltip title="待办提醒">
             <IconButton color="inherit" aria-label="待办提醒" onClick={() => navigate('/calendar')}>

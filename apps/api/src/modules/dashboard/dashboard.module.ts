@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   Client,
+  Communication,
   Invoice,
   Lead,
   Matter,
@@ -28,6 +29,7 @@ import { DashboardService } from './dashboard.service';
       Payment,
       TrustTransaction,
       User,
+      Communication,
     ]),
   ],
   controllers: [DashboardController],

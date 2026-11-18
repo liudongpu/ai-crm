@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AccountBalanceOutlined from '@mui/icons-material/AccountBalanceOutlined';
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined';
+import ChatOutlined from '@mui/icons-material/ChatOutlined';
 import GavelOutlined from '@mui/icons-material/Gavel';
 import PeopleOutline from '@mui/icons-material/PeopleOutline';
 import PersonOutline from '@mui/icons-material/PersonOutline';
@@ -9,6 +10,7 @@ import ReceiptLongOutlined from '@mui/icons-material/ReceiptLongOutlined';
 import RefreshOutlined from '@mui/icons-material/Refresh';
 import ScheduleOutlined from '@mui/icons-material/ScheduleOutlined';
 import TrendingUpOutlined from '@mui/icons-material/TrendingUpOutlined';
+import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -96,7 +98,7 @@ export function DashboardPage() {
     );
   }
 
-  const { metrics, mattersByStage, tasksByType, recentMatters, upcomingTasks, revenueByMonth } = data as DashboardSummary;
+  const { metrics, riskAlerts, mattersByStage, tasksByType, recentMatters, upcomingTasks, revenueByMonth } = data as DashboardSummary;
   const pieData = tasksByType.map((item) => ({ name: taskTypeLabel(item.type), value: item.count }));
   const pieColors = ['#1b365d', '#b8860b', '#2f7a55', '#b4443c', '#2c6b8f', '#8a6808'];
 
@@ -123,6 +125,28 @@ export function DashboardPage() {
         <MetricCard label="信托余额" value={formatCurrency(metrics.trustBalance, true)} hint="客户预付款与代管款项" icon={<AccountBalanceOutlined />} color="#1b365d" onClick={() => navigate('/trust')} />
         <MetricCard label="新咨询线索" value={String(metrics.leads)} hint="待评估与转化" icon={<PersonOutline />} color="#b8860b" onClick={() => navigate('/leads')} />
       </Box>
+
+      {riskAlerts.length > 0 && (
+        <Card sx={{ mt: 2, borderLeft: 4, borderColor: 'warning.main' }}>
+          <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="h6">风险预警</Typography>
+            <Chip size="small" color="warning" label={`${riskAlerts.length} 项需处理`} />
+          </Box>
+          <CardContent sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {riskAlerts.map((alert, index) => (
+              <Alert
+                key={`${alert.type}-${index}`}
+                severity={alert.level === 'high' ? 'error' : 'warning'}
+                icon={<ChatOutlined fontSize="small" />}
+                action={<Button size="small" onClick={() => navigate(alert.route)}>去处理</Button>}
+              >
+                <Typography variant="body2" fontWeight={600}>{alert.label}</Typography>
+                <Typography variant="caption" color="text.secondary" noWrap display="block">{alert.detail}</Typography>
+              </Alert>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, mt: 2 }}>
         <Card>

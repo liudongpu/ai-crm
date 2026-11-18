@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AddOutlined from '@mui/icons-material/AddOutlined';
+import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import Box from '@mui/material/Box';
@@ -9,6 +10,10 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
@@ -27,10 +32,18 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { PageHeader } from '@/components/common/PageHeader';
 import { EmptyState, ErrorState, LoadingRows } from '@/components/common/States';
 import { TaskFormDialog } from '@/components/common/TasksPanel';
-import { useDeleteTask, useMatters, useTasks, useToggleTask, useUsers } from '@/hooks/useCrm';
+import {
+  useCreateTaskFromTemplate,
+  useDeleteTask,
+  useMatters,
+  useTaskTemplates,
+  useTasks,
+  useToggleTask,
+  useUsers,
+} from '@/hooks/useCrm';
 import { formatDateTime } from '@/lib/format';
 import { priorityMeta, taskTypeLabel } from '@/lib/meta';
-import type { Task } from '@/types';
+import type { Task, TaskTemplate } from '@/types';
 
 const isOverdue = (task: Task) => !task.done && Boolean(task.dueDate) && new Date(task.dueDate!).getTime() < Date.now();
 
@@ -41,7 +54,11 @@ export function TasksPage() {
   const { data: users } = useUsers();
   const toggleTask = useToggleTask();
   const deleteTask = useDeleteTask();
+  const { data: templates } = useTaskTemplates();
+  const createFromTemplate = useCreateTaskFromTemplate();
 
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [templateForm, setTemplateForm] = useState({ matterId: '', assigneeId: '' });
   const [search, setSearch] = useState('');
   const [type, setType] = useState('all');
   const [status, setStatus] = useState('all');
@@ -93,7 +110,18 @@ export function TasksPage() {
 
   return (
     <Box>
-      <PageHeader title="任务与流程" subtitle="跨案件统一分派任务、跟踪截止日期与完成进度" actions={<Button variant="contained" startIcon={<AddOutlined />} onClick={openCreate}>新建任务</Button>} />
+      <PageHeader
+        title="任务与流程"
+        subtitle="跨案件统一分派任务、跟踪截止日期与完成进度"
+        actions={
+          <>
+            <Button variant="outlined" startIcon={<AssignmentOutlined />} onClick={() => setTemplateOpen(true)}>
+              从模板创建
+            </Button>
+            <Button variant="contained" startIcon={<AddOutlined />} onClick={openCreate}>新建任务</Button>
+          </>
+        }
+      />
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
         {stats.map((item) => (
           <Card key={item.label} sx={{ minWidth: 150, flex: 1 }}>
@@ -204,6 +232,62 @@ export function TasksPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={templateOpen} onClose={() => setTemplateOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>从模板创建任务</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+          <Typography variant="caption" color="text.secondary">
+            选择任务模板，一键生成常用办案任务。可指定关联案件与负责人。
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel id="template-matter">关联案件</InputLabel>
+            <Select labelId="template-matter" label="关联案件" value={templateForm.matterId} onChange={(event) => setTemplateForm({ ...templateForm, matterId: event.target.value })}>
+              <MenuItem value="">不关联案件</MenuItem>
+              {(matters ?? []).map((matter) => <MenuItem key={matter.id} value={String(matter.id)}>{matter.title}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="template-assignee">负责人</InputLabel>
+            <Select labelId="template-assignee" label="负责人" value={templateForm.assigneeId} onChange={(event) => setTemplateForm({ ...templateForm, assigneeId: event.target.value })}>
+              <MenuItem value="">不指定</MenuItem>
+              {(users ?? []).map((user) => <MenuItem key={user.id} value={String(user.id)}>{user.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+          {(templates ?? []).map((template: TaskTemplate) => (
+            <Card key={template.id} variant="outlined">
+              <CardContent sx={{ py: 1.25, '&:last-child': { pb: 1.25 } }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" fontWeight={700}>{template.name}</Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap display="block">
+                      {template.title} · {taskTypeLabel(template.type)} · 建议 {template.dueInDays} 天内
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    onClick={() =>
+                      createFromTemplate.mutate(
+                        {
+                          id: template.id,
+                          data: {
+                            matterId: templateForm.matterId ? Number(templateForm.matterId) : undefined,
+                            assigneeId: templateForm.assigneeId ? Number(templateForm.assigneeId) : undefined,
+                          },
+                        },
+                        { onSuccess: () => setTemplateOpen(false) },
+                      )
+                    }
+                  >
+                    使用
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          ))}
+          {!templates?.length && <EmptyState title="暂无任务模板" />}
+        </DialogContent>
+        <DialogActions><Button onClick={() => setTemplateOpen(false)} color="inherit">关闭</Button></DialogActions>
+      </Dialog>
 
       <TaskFormDialog open={formOpen} onClose={() => setFormOpen(false)} task={editing} />
       <ConfirmDialog

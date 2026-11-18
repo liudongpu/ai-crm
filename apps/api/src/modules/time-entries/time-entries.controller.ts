@@ -25,6 +25,22 @@ export class TimeEntriesController {
     return this.service.findAll(query ?? {});
   }
 
+  /** 当前计时中的条目（静态路由必须在 :id 之前）。 */
+  @Get('timer/running')
+  running() {
+    return this.service.running();
+  }
+
+  @Post('timer/start')
+  startTimer(@Body() dto: CreateTimeEntryDto) {
+    return this.service.startTimer(dto);
+  }
+
+  @Post(':id/timer/stop')
+  stopTimer(@Param('id', ParseIntPipe) id: number) {
+    return this.service.stopTimer(id);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.service.findOne(id);

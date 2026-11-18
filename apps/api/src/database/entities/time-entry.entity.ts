@@ -40,6 +40,10 @@ export class TimeEntry {
   @Column({ type: 'datetime' })
   date: Date;
 
+  /** 计时器启动时间；非空表示计时中。 */
+  @Column({ type: 'datetime', nullable: true })
+  timerStartedAt: Date | null;
+
   @Column({ type: 'float' })
   hours: number;
 

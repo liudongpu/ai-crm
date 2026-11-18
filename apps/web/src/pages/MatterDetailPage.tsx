@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography';
 import { CommunicationsPanel } from '@/components/common/CommunicationsPanel';
 import { DocumentsPanel } from '@/components/common/DocumentsPanel';
 import { Field, FieldGrid } from '@/components/common/Field';
+import { MatterPeoplePanel } from '@/components/common/MatterPeoplePanel';
 import { NotesPanel } from '@/components/common/NotesPanel';
 import { RecordLayout } from '@/components/common/RecordLayout';
 import { ErrorState } from '@/components/common/States';
@@ -25,6 +26,7 @@ import { MatterFormDialog } from './MattersPage';
 
 const tabs = [
   { label: '概览', value: 'overview' },
+  { label: '当事人与团队', value: 'people' },
   { label: '任务', value: 'tasks' },
   { label: '文档', value: 'documents' },
   { label: '时间与费用', value: 'time' },
@@ -102,6 +104,7 @@ export function MatterDetailPage() {
             </CardContent>
           </Card>
         )}
+        {tab === 'people' && <MatterPeoplePanel matterId={matterId} />}
         {tab === 'tasks' && <TasksPanel matterId={matterId} />}
         {tab === 'documents' && <DocumentsPanel matterId={matterId} />}
         {tab === 'time' && (

@@ -88,6 +88,10 @@ export const communicationTypeMeta: Record<CommunicationType, Tone> = {
   meeting: tone('会议', 'success'),
   message: tone('消息', 'secondary'),
   letter: tone('函件', 'warning'),
+  wechat: tone('微信', 'success'),
+  whatsapp: tone('WhatsApp', 'success'),
+  portal: tone('客户门户', 'info'),
+  internal: tone('内部备注', 'error'),
 };
 
 export const trustTypeMeta: Record<TrustTransactionType, Tone> = {

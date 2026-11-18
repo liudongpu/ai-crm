@@ -6,6 +6,8 @@ import type {
   ClientInput,
   Communication,
   CommunicationInput,
+  InboxConversation,
+  MessageTemplate,
   ConflictCheck,
   ConflictCheckInput,
   ConflictCheckResult,
@@ -15,6 +17,7 @@ import type {
   CourtHolidayInput,
   CourtRule,
   CourtRuleInput,
+  CoreReports,
   DashboardSummary,
   DeadlineCalculateInput,
   DeadlineCalculation,
@@ -43,6 +46,9 @@ import type {
   LeadInput,
   Matter,
   MatterInput,
+  MatterParty,
+  MatterTeamMember,
+  MatterTeamRole,
   MatterStage,
   MatterStageInput,
   Note,
@@ -51,11 +57,13 @@ import type {
   PaymentInput,
   ReminderInput,
   ReportData,
+  RolePermission,
   SearchResults,
   Statute,
   StatuteInput,
   Task,
   TaskInput,
+  TaskTemplate,
   TimeEntry,
   TimeEntryInput,
   TimeLinkInput,
@@ -63,6 +71,7 @@ import type {
   TrustTransactionInput,
   User,
   UserInput,
+  UserPermissions,
   WorkspaceDefinition,
   WorkspaceItem,
   WorkspaceItemInput,
@@ -255,6 +264,18 @@ export const api = {
     move: (id: number, stageId: number, position?: number) =>
       send<Matter>('PATCH', `/matters/${id}/stage`, { stageId, position }),
   },
+  matterPeople: {
+    parties: (matterId: number) => request<MatterParty[]>(`/matters/${matterId}/parties`),
+    addParty: (matterId: number, data: Partial<MatterParty>) => send<MatterParty>('POST', `/matters/${matterId}/parties`, data),
+    updateParty: (id: number, data: Partial<MatterParty>) => send<MatterParty>('PATCH', `/matters/parties/${id}`, data),
+    removeParty: (id: number) => send<{ id: number }>('DELETE', `/matters/parties/${id}`),
+    team: (matterId: number) => request<MatterTeamMember[]>(`/matters/${matterId}/team`),
+    addMember: (matterId: number, data: { userId: number; role: MatterTeamRole; canViewInternal?: boolean }) =>
+      send<MatterTeamMember>('POST', `/matters/${matterId}/team`, data),
+    updateMember: (id: number, data: Partial<MatterTeamMember>) =>
+      send<MatterTeamMember>('PATCH', `/matters/team/${id}`, data),
+    removeMember: (id: number) => send<{ id: number }>('DELETE', `/matters/team/${id}`),
+  },
   leads: {
     ...crud<Lead, LeadInput>('leads'),
     convert: (id: number, data?: LeadConvertInput) => send<LeadConvertResult>('POST', `/leads/${id}/convert`, data),
@@ -266,13 +287,27 @@ export const api = {
   tasks: {
     ...crud<Task, TaskInput>('tasks'),
     toggle: (id: number) => send<Task>('PATCH', `/tasks/${id}/toggle`),
+    templates: {
+      list: () => request<TaskTemplate[]>('/tasks/templates'),
+      create: (data: Partial<TaskTemplate>) => send<TaskTemplate>('POST', '/tasks/templates', data),
+      update: (id: number, data: Partial<TaskTemplate>) =>
+        send<TaskTemplate>('PATCH', `/tasks/templates/${id}`, data),
+      remove: (id: number) => send<{ id: number }>('DELETE', `/tasks/templates/${id}`),
+      createTask: (id: number, data: { matterId?: number; assigneeId?: number; dueDate?: string }) =>
+        send<Task>('POST', `/tasks/templates/${id}/create`, data),
+    },
   },
   documents: crud<Document, DocumentInput>('documents'),
-  timeEntries: crud<TimeEntry, TimeEntryInput>('time-entries'),
+  timeEntries: {
+    ...crud<TimeEntry, TimeEntryInput>('time-entries'),
+    running: () => request<TimeEntry | null>('/time-entries/timer/running'),
+    startTimer: (data: TimeEntryInput) => send<TimeEntry>('POST', '/time-entries/timer/start', data),
+    stopTimer: (id: number) => send<TimeEntry>('POST', `/time-entries/${id}/timer/stop`),
+  },
   expenses: crud<Expense, ExpenseInput>('expenses'),
   invoices: {
     ...crud<Invoice, InvoiceInput>('invoices'),
-    approve: (id: number) => send<Invoice>('POST', `/invoices/${id}/approve`),
+    approve: (id: number, actorId?: number) => send<Invoice>('POST', `/invoices/${id}/approve`, actorId ? { actorId } : undefined),
     send: (id: number) => send<Invoice>('POST', `/invoices/${id}/send`),
     void: (id: number) => send<Invoice>('POST', `/invoices/${id}/void`),
     pay: (id: number, data: PaymentInput) => send<Invoice>('POST', `/invoices/${id}/payments`, data),
@@ -282,7 +317,29 @@ export const api = {
     ...crud<TrustTransaction, TrustTransactionInput>('trust-transactions'),
     reconcile: (id: number) => send<TrustTransaction>('PATCH', `/trust-transactions/${id}/reconcile`),
   },
-  communications: crud<Communication, CommunicationInput>('communications'),
+  communications: {
+    ...crud<Communication, CommunicationInput>('communications'),
+    inbox: () => request<InboxConversation[]>('/communications/inbox'),
+    archive: (id: number, data: { matterId: number; clientId?: number }) =>
+      send<Communication>('POST', `/communications/${id}/archive`, data),
+    archiveConversation: (data: { conversationKey: string; matterId: number; clientId?: number }) =>
+      send<{ updated: number }>('POST', '/communications/archive-conversation', data),
+    markRead: (id: number) => send<Communication>('POST', `/communications/${id}/read`),
+    markReplied: (id: number) => send<Communication>('POST', `/communications/${id}/replied`),
+    toggleFollowUp: (id: number) => send<Communication>('POST', `/communications/${id}/follow-up`),
+    aiDraft: (params: { matterId?: number; intent?: string } = {}) =>
+      request<{ content: string; source: string; needsHumanReview: boolean }>(
+        `/communications/ai-draft${toQuery(params)}`,
+      ),
+    templates: {
+      list: () => request<MessageTemplate[]>('/communications/templates'),
+      create: (data: Partial<MessageTemplate>) =>
+        send<MessageTemplate>('POST', '/communications/templates', data),
+      update: (id: number, data: Partial<MessageTemplate>) =>
+        send<MessageTemplate>('PATCH', `/communications/templates/${id}`, data),
+      remove: (id: number) => send<{ id: number }>('DELETE', `/communications/templates/${id}`),
+    },
+  },
   notes: crud<Note, NoteInput>('notes'),
   calendar: {
     events: {
@@ -347,8 +404,14 @@ export const api = {
     },
   },
   search: (query: string) => request<SearchResults>(`/search?q=${encodeURIComponent(query)}`),
+  permissions: {
+    list: () => request<RolePermission[]>('/permissions'),
+    me: (userId?: number) => request<UserPermissions>(`/permissions/me${userId ? `?userId=${userId}` : ''}`),
+    update: (id: number, enabled: boolean) => send<RolePermission>('PATCH', `/permissions/${id}`, { enabled }),
+  },
   dashboard: {
     summary: () => request<DashboardSummary>('/dashboard/summary'),
+    coreReports: () => request<CoreReports>('/dashboard/core-reports'),
     reports: (days = 90) => request<ReportData>(`/dashboard/reports?days=${days}`),
   },
 };

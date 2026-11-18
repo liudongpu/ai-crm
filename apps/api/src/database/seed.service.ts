@@ -23,11 +23,16 @@ import {
   InvoiceItem,
   Lead,
   Matter,
+  MatterParty,
   MatterStage,
+  MatterTeamMember,
+  MessageTemplate,
   Note,
   Payment,
+  RolePermission,
   Statute,
   Task,
+  TaskTemplate,
   TimeEntry,
   TrustTransaction,
   User,
@@ -477,17 +482,82 @@ const COMMUNICATIONS: Array<{
   content: string;
   daysAgo: number;
   user: number;
+  unread?: boolean;
+  replied?: boolean;
+  needsFollowUp?: boolean;
+  internal?: boolean;
 }> = [
   { matter: 0, client: 0, contact: 0, type: 'email', direction: 'outbound', subject: '关于货款纠纷和解方案', content: '已向对方发送和解方案，请确认可接受范围。', daysAgo: 1, user: 0 },
+  { matter: 0, client: 0, contact: 0, type: 'wechat', direction: 'inbound', subject: '客户微信询问进展', content: '陈律师您好，昨天发您的和解方案我方还在内部讨论，请问对方最低能接受多少？', daysAgo: 1, user: 0, unread: true, needsFollowUp: true },
   { matter: 0, client: 0, contact: 0, type: 'call', direction: 'inbound', subject: '客户来电询问进展', content: '客户希望本周内收到庭审排期信息。', daysAgo: 2, user: 3 },
   { matter: 2, client: 1, contact: 2, type: 'meeting', direction: 'outbound', subject: '并购项目进度会', content: '讨论尽调发现的问题及交易价格调整方案。', daysAgo: 3, user: 1 },
-  { matter: 4, client: 1, contact: 3, type: 'email', direction: 'inbound', subject: '病历资料补充', content: '客户补充了住院期间的护理记录。', daysAgo: 5, user: 1 },
+  { matter: 4, client: 1, contact: 3, type: 'email', direction: 'inbound', subject: '病历资料补充', content: '王律师您好，我补充了住院期间的护理记录，请问还需要其他材料吗？', daysAgo: 5, user: 1, unread: true },
   { matter: 6, client: 2, contact: 4, type: 'sms', direction: 'outbound', subject: '庭审时间提醒', content: '已提醒客户庭审时间与地点。', daysAgo: 7, user: 2 },
   { matter: 6, client: 2, contact: 4, type: 'meeting', direction: 'inbound', subject: '证据准备会议', content: '确认第二批证据材料清单。', daysAgo: 10, user: 0 },
   { matter: 3, client: 0, contact: 0, type: 'email', direction: 'outbound', subject: '许可协议修订稿', content: '发送第三版许可协议修订稿供审阅。', daysAgo: 12, user: 1 },
+  { matter: 3, client: 0, contact: 0, type: 'internal', direction: 'outbound', subject: '内部备注：许可协议风险点', content: '第三版对违约责任条款做了让步，需合伙人确认后再发客户。', daysAgo: 12, user: 1, internal: true },
   { matter: 8, client: 1, contact: 2, type: 'letter', direction: 'outbound', subject: '合规审查阶段报告', content: '寄送数据合规阶段性报告。', daysAgo: 18, user: 2 },
   { matter: 9, client: 4, contact: 6, type: 'call', direction: 'inbound', subject: '调解意向沟通', content: '客户愿意接受调解，需准备财产清单。', daysAgo: 21, user: 1 },
   { matter: 11, client: 3, contact: 5, type: 'message', direction: 'outbound', subject: '案件结果通知', content: '商标异议复审结果已通知客户。', daysAgo: 45, user: 2 },
+  { client: 5, type: 'portal', direction: 'inbound', subject: '客户门户留言', content: '请问遗产继承案件的进度如何？上次说的财产清单我已上传。', daysAgo: 2, user: 3, unread: true, needsFollowUp: true },
+];
+
+/** M7 消息模板（8 个），从参考文档对齐。 */
+const MESSAGE_TEMPLATES: Array<{
+  code: string;
+  name: string;
+  category: string;
+  content: string;
+}> = [
+  { code: 'ack', name: '收到确认', category: '通用', content: '您好，您的消息已收到，我们会尽快核实并回复。如有紧急事项，可直接电话联系主办律师。' },
+  { code: 'progress', name: '案件进展同步', category: '案件', content: '您好，关于{案件名称}，目前案件进展为：{进展说明}。下一步我们将{下一步安排}，预计在{时间}向您同步最新情况。' },
+  { code: 'doc_request', name: '材料补充请求', category: '案件', content: '您好，为推进{案件名称}，请您补充以下材料：{材料清单}。您可通过客户门户上传，或发送至主办律师邮箱。' },
+  { code: 'meeting_notice', name: '会议通知', category: '案件', content: '您好，现约您于{时间}就{案件名称}进行沟通，地点/方式为{地点}。如时间不便，请及时告知我们调整。' },
+  { code: 'deadline_reminder', name: '期限提醒', category: '期限', content: '您好，提醒您{案件名称}的相关期限为{日期}。请在此之前准备{所需事项}，以免耽误案件推进。' },
+  { code: 'invoice_notice', name: '账单通知', category: '财务', content: '您好，{案件名称}的账单{账单编号}已生成，金额{金额}，请于{到期日}前完成付款。如有疑问欢迎联系财务。' },
+  { code: 'payment_received', name: '收款确认', category: '财务', content: '您好，我们已收到您的付款{金额}，感谢配合。收款将记入{案件名称}的账户，明细可随时向我们索取。' },
+  { code: 'closing', name: '结案通知', category: '案件', content: '您好，{案件名称}已办结。感谢您的信任，后续如有需要我们随时为您提供法律支持。' },
+];
+
+/** 角色权限矩阵（4 类角色 + 管理员）。 */
+const ROLE_PERMISSIONS: Record<string, Record<string, boolean>> = {
+  admin: {
+    'dashboard.firm': true, 'matter.all': true, 'invoice.approve': true, 'invoice.send': true,
+    'finance.manage': true, 'communication.internal': true, 'user.manage': true, 'ai.use': true,
+  },
+  partner: {
+    'dashboard.firm': true, 'matter.all': true, 'invoice.approve': true, 'invoice.send': true,
+    'finance.manage': true, 'communication.internal': true, 'user.manage': true, 'ai.use': true,
+  },
+  associate: {
+    'dashboard.firm': false, 'matter.all': false, 'invoice.approve': false, 'invoice.send': false,
+    'finance.manage': false, 'communication.internal': true, 'user.manage': false, 'ai.use': true,
+  },
+  assistant: {
+    'dashboard.firm': false, 'matter.all': false, 'invoice.approve': false, 'invoice.send': false,
+    'finance.manage': false, 'communication.internal': true, 'user.manage': false, 'ai.use': false,
+  },
+  accountant: {
+    'dashboard.firm': true, 'matter.all': false, 'invoice.approve': false, 'invoice.send': true,
+    'finance.manage': true, 'communication.internal': false, 'user.manage': false, 'ai.use': false,
+  },
+};
+
+/** 任务模板（办案常用清单）。 */
+const TASK_TEMPLATES: Array<{
+  name: string;
+  category: string;
+  title: string;
+  type: TaskTemplate['type'];
+  priority: TaskTemplate['priority'];
+  description: string;
+  dueInDays: number;
+}> = [
+  { name: '案件启动清单', category: '案件', title: '案件启动：核对委托手续与材料清单', type: 'task', priority: 'high', description: '签署委托代理合同、授权委托书，收集案件基础材料。', dueInDays: 3 },
+  { name: '证据收集', category: '案件', title: '证据收集：整理证据目录并催要缺失材料', type: 'task', priority: 'high', description: '按证据清单逐项核对，标注缺失项并联系客户补充。', dueInDays: 7 },
+  { name: '庭审准备', category: '庭审', title: '庭审准备：完成代理词与证据装订', type: 'hearing', priority: 'high', description: '准备庭审提纲、代理词，整理证据原件与复印件。', dueInDays: 14 },
+  { name: '结案归档', category: '结案', title: '结案归档：整理卷宗并通知客户', type: 'task', priority: 'medium', description: '按归档清单整理卷宗，同步结案文书与费用结算。', dueInDays: 30 },
+  { name: '客户回访', category: '客户', title: '客户回访：确认满意度与后续需求', type: 'reminder', priority: 'low', description: '结案后回访客户，记录反馈与潜在二次委托机会。', dueInDays: 45 },
 ];
 
 const NOTES: Array<{
@@ -637,16 +707,24 @@ export class SeedService {
     @InjectRepository(Client) private readonly clients: Repository<Client>,
     @InjectRepository(Contact) private readonly contacts: Repository<Contact>,
     @InjectRepository(Matter) private readonly matters: Repository<Matter>,
+    @InjectRepository(MatterParty) private readonly matterParties: Repository<MatterParty>,
+    @InjectRepository(MatterTeamMember)
+    private readonly matterTeams: Repository<MatterTeamMember>,
     @InjectRepository(Lead) private readonly leads: Repository<Lead>,
     @InjectRepository(ConflictCheck) private readonly conflicts: Repository<ConflictCheck>,
     @InjectRepository(Task) private readonly tasks: Repository<Task>,
+    @InjectRepository(TaskTemplate) private readonly taskTemplates: Repository<TaskTemplate>,
     @InjectRepository(Document) private readonly documents: Repository<Document>,
     @InjectRepository(TimeEntry) private readonly entries: Repository<TimeEntry>,
     @InjectRepository(Expense) private readonly expenses: Repository<Expense>,
     @InjectRepository(Invoice) private readonly invoices: Repository<Invoice>,
     @InjectRepository(Payment) private readonly payments: Repository<Payment>,
+    @InjectRepository(RolePermission)
+    private readonly rolePermissions: Repository<RolePermission>,
     @InjectRepository(TrustTransaction) private readonly trust: Repository<TrustTransaction>,
     @InjectRepository(Communication) private readonly communications: Repository<Communication>,
+    @InjectRepository(MessageTemplate)
+    private readonly messageTemplates: Repository<MessageTemplate>,
     @InjectRepository(Note) private readonly notes: Repository<Note>,
     @InjectRepository(FeatureModuleEntity)
     private readonly featureModules: Repository<FeatureModuleEntity>,
@@ -669,6 +747,8 @@ export class SeedService {
   async seed() {
     await this.seedFeatures();
     await this.seedWorkspace();
+    await this.seedMessageTemplates();
+    await this.seedPermissions();
     if ((await this.users.count()) > 0) {
       await this.seedCalendarData();
       return;
@@ -760,6 +840,68 @@ export class SeedService {
           }),
         ),
       );
+    }
+
+    // 当事人与案件团队：每个案件 1-3 人，主办 + 协办 + 可选助理。
+    for (const [index, matter] of MATTERS.entries()) {
+      const currentMatter = matterEntities[index];
+      const client = clientEntities[matter.client];
+      await this.matterParties.save(
+        this.matterParties.create({
+          matterId: currentMatter.id,
+          role: 'plaintiff',
+          name: client.name,
+          clientId: client.id,
+          contact: client.contactName,
+          note: '委托方 / 原告',
+        }),
+      );
+      await this.matterParties.save(
+        this.matterParties.create({
+          matterId: currentMatter.id,
+          role: 'defendant',
+          name: index % 2 === 0 ? '北京云启科技有限公司' : '李某某',
+          contact: index % 2 === 0 ? '010-88886666' : '138****2200',
+          note: '对方当事人',
+        }),
+      );
+      if (index % 3 === 0) {
+        await this.matterParties.save(
+          this.matterParties.create({
+            matterId: currentMatter.id,
+            role: 'third_party',
+            name: '中山知识产权服务中心',
+            note: '第三人（如有）',
+          }),
+        );
+      }
+
+      await this.matterTeams.save(
+        this.matterTeams.create({
+          matterId: currentMatter.id,
+          userId: userEntities[matter.owner].id,
+          role: 'lead',
+          canViewInternal: true,
+        }),
+      );
+      await this.matterTeams.save(
+        this.matterTeams.create({
+          matterId: currentMatter.id,
+          userId: userEntities[(matter.owner + 1) % 3].id,
+          role: 'associate',
+          canViewInternal: true,
+        }),
+      );
+      if (index % 2 === 0) {
+        await this.matterTeams.save(
+          this.matterTeams.create({
+            matterId: currentMatter.id,
+            userId: userEntities[3].id,
+            role: 'assistant',
+            canViewInternal: false,
+          }),
+        );
+      }
     }
 
     const leadEntities: Lead[] = [];
@@ -1011,9 +1153,20 @@ export class SeedService {
           content: item.content,
           occurredAt: this.daysAgo(item.daysAgo),
           userId: userEntities[item.user].id,
+          conversationKey:
+            item.matter !== undefined
+              ? `matter:${matterEntities[item.matter].id}`
+              : `client:${clientEntities[item.client].id}`,
+          senderName: item.direction === 'inbound' ? clientEntities[item.client].contactName : null,
+          unread: item.unread ?? false,
+          replied: item.replied ?? item.direction === 'outbound',
+          needsFollowUp: item.needsFollowUp ?? false,
+          internal: item.internal ?? false,
         }),
       );
     }
+
+
 
     const targetIds: Record<Note['targetType'], number[]> = {
       matter: matterEntities.map((item) => item.id),
@@ -1036,6 +1189,29 @@ export class SeedService {
 
     this.logger.log('律所演示数据初始化完成。');
     await this.seedCalendarData();
+  }
+
+  private async seedPermissions() {
+    for (const [role, permissions] of Object.entries(ROLE_PERMISSIONS)) {
+      for (const [permission, enabled] of Object.entries(permissions)) {
+        if ((await this.rolePermissions.count({ where: { role, permission } })) === 0) {
+          await this.rolePermissions.save(this.rolePermissions.create({ role, permission, enabled }));
+        }
+      }
+    }
+  }
+
+  private async seedMessageTemplates() {
+    for (const template of MESSAGE_TEMPLATES) {
+      if ((await this.messageTemplates.count({ where: { code: template.code } })) === 0) {
+        await this.messageTemplates.save(this.messageTemplates.create(template));
+      }
+    }
+    for (const template of TASK_TEMPLATES) {
+      if ((await this.taskTemplates.count({ where: { name: template.name } })) === 0) {
+        await this.taskTemplates.save(this.taskTemplates.create(template));
+      }
+    }
   }
 
   private async seedFeatures() {

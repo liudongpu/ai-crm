@@ -202,6 +202,35 @@ export class CommunicationQueryDto {
   @IsOptional()
   @IsString()
   type?: string;
+
+  @IsOptional()
+  @IsString()
+  conversationKey?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  unread?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  unreplied?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  needsFollowUp?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  internal?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  userId?: number;
 }
 
 export class NoteQueryDto {

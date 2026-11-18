@@ -6,6 +6,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -34,6 +35,8 @@ import {
   useCreateUser,
   useDeleteUser,
   useMatterStages,
+  usePermissions,
+  useUpdatePermission,
   useUpdateUser,
   useUsers,
 } from '@/hooks/useCrm';
@@ -44,6 +47,18 @@ import type { User, UserInput, UserRole } from '@/types';
 type FormState = { name: string; email: string; role: UserRole; title: string; active: boolean };
 const emptyForm: FormState = { name: '', email: '', role: 'associate', title: '', active: true };
 
+const permissionOrder = [
+  { key: 'dashboard.firm', label: '查看全所经营报表' },
+  { key: 'matter.all', label: '查看全部案件' },
+  { key: 'invoice.approve', label: '审批账单' },
+  { key: 'invoice.send', label: '发送账单' },
+  { key: 'finance.manage', label: '收款 / 对账 / 信托' },
+  { key: 'communication.internal', label: '查看内部备注' },
+  { key: 'user.manage', label: '管理用户与角色' },
+  { key: 'ai.use', label: '使用法律 AI 辅助' },
+];
+const permissionRoles = Object.keys(userRoleMeta) as UserRole[];
+
 export function SettingsPage() {
   const [tab, setTab] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
@@ -52,6 +67,8 @@ export function SettingsPage() {
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const { data: users, isLoading, isError, error, refetch } = useUsers();
   const { data: stages, isLoading: stagesLoading } = useMatterStages();
+  const { data: permissions } = usePermissions();
+  const updatePermission = useUpdatePermission();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
@@ -82,10 +99,11 @@ export function SettingsPage() {
 
   return (
     <Box>
-      <PageHeader title="系统设置" subtitle="用户与角色管理、案件阶段配置" />
+      <PageHeader title="系统设置" subtitle="用户、角色权限与案件阶段配置" />
       <Card>
         <Tabs value={tab} onChange={(_, value: number) => setTab(value)} sx={{ borderBottom: 1, borderColor: 'divider', px: 1 }}>
           <Tab label="用户与角色" />
+          <Tab label="角色权限" />
           <Tab label="案件阶段" />
         </Tabs>
         <CardContent sx={{ p: 2 }}>
@@ -139,6 +157,50 @@ export function SettingsPage() {
           )}
 
           {tab === 1 && (
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                角色权限决定可见范围与可执行操作：律师生成账单草稿后需合伙人审批；只有案件团队成员可查看并回复该案件会话。
+                当前演示环境未接入登录，前端以第一位用户身份发起请求。
+              </Typography>
+              <Paper>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>权限</TableCell>
+                        {permissionRoles.map((role) => <TableCell key={role} align="center">{userRoleMeta[role]}</TableCell>)}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {permissionOrder.map((item) => (
+                        <TableRow key={item.key} hover>
+                          <TableCell sx={{ fontWeight: 600 }}>{item.label}</TableCell>
+                          {permissionRoles.map((role) => {
+                            const config = permissions?.find((row) => row.role === role && row.permission === item.key);
+                            return (
+                              <TableCell key={role} align="center">
+                                <Checkbox
+                                  size="small"
+                                  checked={config?.enabled ?? false}
+                                  disabled={!config}
+                                  onChange={(event) => {
+                                    if (config) updatePermission.mutate({ id: config.id, enabled: event.target.checked });
+                                  }}
+                                  inputProps={{ 'aria-label': `${userRoleMeta[role]} - ${item.label}` }}
+                                />
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            </Box>
+          )}
+
+          {tab === 2 && (
             <Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 案件阶段为系统预置数据，供看板与流程使用，此处仅供查看。

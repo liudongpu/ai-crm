@@ -9,12 +9,14 @@ import {
 import { InvoicePaymentDto, InvoiceQueryDto } from '../../common/dto/special.dto';
 import { Invoice, InvoiceItem } from '../../database/entities';
 import { PaymentsService } from '../payments/payments.service';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Injectable()
 export class InvoicesService extends CrudService<Invoice> {
   constructor(
     @InjectRepository(Invoice) repo: Repository<Invoice>,
     private readonly payments: PaymentsService,
+    private readonly permissions: PermissionsService,
   ) {
     super(repo);
   }
@@ -66,7 +68,9 @@ export class InvoicesService extends CrudService<Invoice> {
     return this.repo.save(invoice);
   }
 
-  async approve(id: number) {
+  async approve(id: number, actorId?: number) {
+    // 律师生成草稿，合伙人审批：按角色权限校验（AT-07）。
+    await this.permissions.assert(actorId, 'invoice.approve');
     const invoice = await this.findOne(id);
     this.assertEditable(invoice);
     invoice.status = 'approved';
@@ -76,6 +80,10 @@ export class InvoicesService extends CrudService<Invoice> {
   async send(id: number) {
     const invoice = await this.findOne(id);
     this.assertEditable(invoice);
+    // 律师草稿 → 合伙人审批 → 发送：未经审批的账单不得发送给客户（AT-03）。
+    if (invoice.status !== 'approved') {
+      throw new BadRequestException('账单需先经审批通过后才能发送给客户');
+    }
     invoice.status = 'sent';
     return this.repo.save(invoice);
   }

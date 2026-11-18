@@ -52,11 +52,15 @@ import type {
   LeadConvertResult,
   LeadInput,
   MatterInput,
+  MatterParty,
+  MatterTeamMember,
+  MessageTemplate,
   NoteInput,
   PaymentInput,
   ReminderInput,
   StatuteInput,
   TaskInput,
+  TaskTemplate,
   TimeEntryInput,
   TimeLinkInput,
   TrustTransactionInput,
@@ -70,20 +74,27 @@ import type {
 
 export const keys = {
   users: ['users'] as const,
+  permissions: ['permissions'] as const,
   clients: ['clients'] as const,
   contacts: ['contacts'] as const,
   matterStages: ['matterStages'] as const,
   matters: ['matters'] as const,
+  matterParties: ['matterParties'] as const,
+  matterTeam: ['matterTeam'] as const,
   leads: ['leads'] as const,
   conflicts: ['conflicts'] as const,
   tasks: ['tasks'] as const,
+  taskTemplates: ['taskTemplates'] as const,
   documents: ['documents'] as const,
   timeEntries: ['timeEntries'] as const,
+  runningTimer: ['runningTimer'] as const,
   expenses: ['expenses'] as const,
   invoices: ['invoices'] as const,
   payments: ['payments'] as const,
   trustTransactions: ['trustTransactions'] as const,
   communications: ['communications'] as const,
+  inbox: ['inbox'] as const,
+  messageTemplates: ['messageTemplates'] as const,
   notes: ['notes'] as const,
   calendar: {
     all: ['calendar'] as const,
@@ -196,6 +207,12 @@ function useDetail<T>(key: readonly unknown[], id: number | undefined, fn: () =>
 }
 
 export const useUsers = () => useList(keys.users, () => api.users.list());
+export const usePermissions = () => useQuery({ queryKey: keys.permissions, queryFn: api.permissions.list });
+export const useUpdatePermission = () =>
+  useActionMutation<{ id: number; enabled: boolean }>(
+    (args) => api.permissions.update(args.id, args.enabled),
+    '权限已更新',
+  );
 export const useUser = (id?: number) => useDetail(keys.users, id, () => api.users.get(id!));
 
 export const useClients = (params: Params = {}) => useList(keys.clients, () => api.clients.list(params), params);
@@ -207,14 +224,21 @@ export const useContact = (id?: number) => useDetail(keys.contacts, id, () => ap
 export const useMatterStages = () => useList(keys.matterStages, () => api.matterStages.list());
 export const useMatters = (params: Params = {}) => useList(keys.matters, () => api.matters.list(params), params);
 export const useMatter = (id?: number) => useDetail(keys.matters, id, () => api.matters.get(id!));
+export const useMatterParties = (matterId: number) =>
+  useQuery({ queryKey: [...keys.matterParties, matterId], queryFn: () => api.matterPeople.parties(matterId), enabled: Number.isFinite(matterId) });
+export const useMatterTeam = (matterId: number) =>
+  useQuery({ queryKey: [...keys.matterTeam, matterId], queryFn: () => api.matterPeople.team(matterId), enabled: Number.isFinite(matterId) });
 
 export const useLeads = (params: Params = {}) => useList(keys.leads, () => api.leads.list(params), params);
 export const useLead = (id?: number) => useDetail(keys.leads, id, () => api.leads.get(id!));
 
 export const useConflicts = () => useList(keys.conflicts, () => api.conflicts.list());
 export const useTasks = (params: Params = {}) => useList(keys.tasks, () => api.tasks.list(params), params);
+export const useTaskTemplates = () =>
+  useQuery({ queryKey: keys.taskTemplates, queryFn: () => api.tasks.templates.list() });
 export const useDocuments = (params: Params = {}) => useList(keys.documents, () => api.documents.list(params), params);
 export const useTimeEntries = (params: Params = {}) => useList(keys.timeEntries, () => api.timeEntries.list(params), params);
+export const useRunningTimer = () => useQuery({ queryKey: keys.runningTimer, queryFn: () => api.timeEntries.running() });
 export const useExpenses = (params: Params = {}) => useList(keys.expenses, () => api.expenses.list(params), params);
 export const useInvoices = (params: Params = {}) => useList(keys.invoices, () => api.invoices.list(params), params);
 export const useInvoice = (id?: number) => useDetail(keys.invoices, id, () => api.invoices.get(id!));
@@ -223,6 +247,9 @@ export const useTrustTransactions = (params: Params = {}) =>
   useList(keys.trustTransactions, () => api.trustTransactions.list(params), params);
 export const useCommunications = (params: Params = {}) =>
   useList(keys.communications, () => api.communications.list(params), params);
+export const useInbox = () => useQuery({ queryKey: keys.inbox, queryFn: () => api.communications.inbox() });
+export const useMessageTemplates = () =>
+  useQuery({ queryKey: keys.messageTemplates, queryFn: () => api.communications.templates.list() });
 export const useNotes = (params: Params = {}) => useList(keys.notes, () => api.notes.list(params), params);
 
 export const useCalendarEvents = (params: Params = {}) =>
@@ -318,6 +345,10 @@ export function useReports(days: number) {
   return useQuery({ queryKey: [...keys.reports, days], queryFn: () => api.dashboard.reports(days) });
 }
 
+export function useCoreReports() {
+  return useQuery({ queryKey: [...keys.reports, 'core'], queryFn: api.dashboard.coreReports });
+}
+
 export function useSearch(query: string) {
   return useQuery({
     queryKey: [...keys.search, query],
@@ -341,6 +372,25 @@ export const useUpdateContact = () => useUpdateMutation<ContactInput>((args) => 
 export const useDeleteContact = () => useDeleteMutation(api.contacts.remove, '联系人已删除');
 
 export const useCreateMatter = () => useCreateMutation<MatterInput>(api.matters.create, '案件已创建');
+export const useAddMatterParty = () =>
+  useActionMutation<{ matterId: number; data: Partial<MatterParty> }>(
+    (args) => api.matterPeople.addParty(args.matterId, args.data),
+    '当事人已添加',
+  );
+export const useUpdateMatterParty = () =>
+  useActionMutation<{ id: number; data: Partial<MatterParty> }>(
+    (args) => api.matterPeople.updateParty(args.id, args.data),
+    '当事人已更新',
+  );
+export const useDeleteMatterParty = () =>
+  useActionMutation<number>((id) => api.matterPeople.removeParty(id), '当事人已删除');
+export const useAddMatterTeamMember = () =>
+  useActionMutation<{ matterId: number; data: { userId: number; role: MatterTeamMember['role']; canViewInternal?: boolean } }>(
+    (args) => api.matterPeople.addMember(args.matterId, args.data),
+    '团队成员已添加',
+  );
+export const useDeleteMatterTeamMember = () =>
+  useActionMutation<number>((id) => api.matterPeople.removeMember(id), '团队成员已移除');
 export const useUpdateMatter = () => useUpdateMutation<MatterInput>((args) => api.matters.update(args.id, args.data), '案件已更新');
 export const useDeleteMatter = () => useDeleteMutation(api.matters.remove, '案件已删除');
 export const useMoveMatter = () =>
@@ -366,6 +416,20 @@ export const useUpdateTask = () => useUpdateMutation<TaskInput>((args) => api.ta
 export const useDeleteTask = () => useDeleteMutation(api.tasks.remove, '任务已删除');
 export const useToggleTask = () =>
   useActionMutation<number>((id) => api.tasks.toggle(id));
+export const useCreateTaskFromTemplate = () =>
+  useActionMutation<{ id: number; data: { matterId?: number; assigneeId?: number; dueDate?: string } }>(
+    (args) => api.tasks.templates.createTask(args.id, args.data),
+    '已从模板创建任务',
+  );
+export const useCreateTaskTemplate = () =>
+  useCreateMutation<Partial<TaskTemplate>>(api.tasks.templates.create, '任务模板已创建');
+export const useUpdateTaskTemplate = () =>
+  useUpdateMutation<Partial<TaskTemplate>>(
+    (args) => api.tasks.templates.update(args.id, args.data),
+    '任务模板已更新',
+  );
+export const useDeleteTaskTemplate = () =>
+  useDeleteMutation(api.tasks.templates.remove, '任务模板已删除');
 
 export const useCreateDocument = () => useCreateMutation<DocumentInput>(api.documents.create, '文档已创建');
 export const useUpdateDocument = () =>
@@ -376,6 +440,8 @@ export const useCreateTimeEntry = () => useCreateMutation<TimeEntryInput>(api.ti
 export const useUpdateTimeEntry = () =>
   useUpdateMutation<TimeEntryInput>((args) => api.timeEntries.update(args.id, args.data), '时间记录已更新');
 export const useDeleteTimeEntry = () => useDeleteMutation(api.timeEntries.remove, '时间记录已删除');
+export const useStartTimer = () => useCreateMutation<TimeEntryInput>(api.timeEntries.startTimer, '计时已开始');
+export const useStopTimer = () => useActionMutation<number>(api.timeEntries.stopTimer, '计时已停止并保存');
 
 export const useCreateExpense = () => useCreateMutation<ExpenseInput>(api.expenses.create, '费用已创建');
 export const useUpdateExpense = () => useUpdateMutation<ExpenseInput>((args) => api.expenses.update(args.id, args.data), '费用已更新');
@@ -385,7 +451,11 @@ export const useCreateInvoice = () => useCreateMutation<InvoiceInput>(api.invoic
 export const useUpdateInvoice = () =>
   useUpdateMutation<InvoiceInput>((args) => api.invoices.update(args.id, args.data), '账单已更新');
 export const useDeleteInvoice = () => useDeleteMutation(api.invoices.remove, '账单已删除');
-export const useApproveInvoice = () => useActionMutation<number>((id) => api.invoices.approve(id), '账单已审批');
+export const useApproveInvoice = () =>
+  useActionMutation<{ id: number; actorId?: number }>(
+    (args) => api.invoices.approve(args.id, args.actorId),
+    '账单已审批',
+  );
 export const useSendInvoice = () => useActionMutation<number>((id) => api.invoices.send(id), '账单已发送');
 export const useVoidInvoice = () => useActionMutation<number>((id) => api.invoices.void(id), '账单已作废');
 export const usePayInvoice = () =>
@@ -412,6 +482,38 @@ export const useCreateCommunication = () =>
 export const useUpdateCommunication = () =>
   useUpdateMutation<CommunicationInput>((args) => api.communications.update(args.id, args.data), '沟通记录已更新');
 export const useDeleteCommunication = () => useDeleteMutation(api.communications.remove, '沟通记录已删除');
+
+/** M7 统一收件箱动作。 */
+export const useArchiveCommunication = () =>
+  useActionMutation<{ id: number; data: { matterId: number; clientId?: number } }>(
+    (args) => api.communications.archive(args.id, args.data),
+    '已归档到案件',
+  );
+export const useArchiveConversation = () =>
+  useActionMutation<{ conversationKey: string; matterId: number; clientId?: number }>(
+    (args) => api.communications.archiveConversation(args),
+    '会话已归档到案件',
+  );
+export const useMarkCommunicationRead = () =>
+  useActionMutation<number>((id) => api.communications.markRead(id));
+export const useMarkCommunicationReplied = () =>
+  useActionMutation<number>((id) => api.communications.markReplied(id), '已标记为已回复');
+export const useToggleCommunicationFollowUp = () =>
+  useActionMutation<number>((id) => api.communications.toggleFollowUp(id));
+export const useAiDraft = () =>
+  useActionMutation<
+    { matterId?: number; intent?: string },
+    { content: string; source: string; needsHumanReview: boolean }
+  >((args) => api.communications.aiDraft(args));
+export const useCreateMessageTemplate = () =>
+  useCreateMutation<Partial<MessageTemplate>>(api.communications.templates.create, '消息模板已创建');
+export const useUpdateMessageTemplate = () =>
+  useUpdateMutation<Partial<MessageTemplate>>(
+    (args) => api.communications.templates.update(args.id, args.data),
+    '消息模板已更新',
+  );
+export const useDeleteMessageTemplate = () =>
+  useDeleteMutation(api.communications.templates.remove, '消息模板已删除');
 
 export const useCreateNote = () => useCreateMutation<NoteInput>(api.notes.create, '备注已添加');
 export const useUpdateNote = () => useUpdateMutation<NoteInput>((args) => api.notes.update(args.id, args.data), '备注已更新');

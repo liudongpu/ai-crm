@@ -5,7 +5,9 @@ import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import PaymentsOutlined from '@mui/icons-material/PaymentsOutlined';
+import PlayArrowOutlined from '@mui/icons-material/PlayArrowOutlined';
 import SendOutlined from '@mui/icons-material/SendOutlined';
+import StopOutlined from '@mui/icons-material/StopOutlined';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -46,7 +48,10 @@ import {
   useInvoices,
   useMatters,
   usePayInvoice,
+  useRunningTimer,
   useSendInvoice,
+  useStartTimer,
+  useStopTimer,
   useTimeEntries,
   useUpdateExpense,
   useUpdateInvoice,
@@ -83,6 +88,122 @@ type TimeForm = {
 };
 
 const emptyTime: TimeForm = { matterId: '', userId: '', date: todayInput(), hours: '1', description: '', billable: true, rate: '800' };
+
+/** 计时器：开始 / 停止，实时显示已用时间。 */
+function TimerControl({ matterId }: { matterId?: number }) {
+  const { data: running } = useRunningTimer();
+  const { data: matters } = useMatters();
+  const { data: users } = useUsers();
+  const startTimer = useStartTimer();
+  const stopTimer = useStopTimer();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ matterId: '', userId: '', description: '' });
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(() => setTick((value) => value + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [running]);
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        matterId: String(matterId ?? ''),
+        userId: String(users?.[0]?.id ?? ''),
+        description: '',
+      });
+    }
+  }, [open, matterId, users]);
+
+  const elapsed = running
+    ? Math.max(0, Date.now() - new Date(running.timerStartedAt!).getTime())
+    : 0;
+  const hours = Math.floor(elapsed / 3_600_000);
+  const minutes = Math.floor((elapsed % 3_600_000) / 60_000);
+  const seconds = Math.floor((elapsed % 60_000) / 1000);
+  const elapsedLabel = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  const submit = () => {
+    if (!form.matterId || !form.userId || !form.description.trim()) return;
+    startTimer.mutate(
+      {
+        matterId: Number(form.matterId),
+        userId: Number(form.userId),
+        date: new Date().toISOString(),
+        hours: 0,
+        description: form.description.trim(),
+        billable: true,
+        rate: 800,
+      },
+      { onSuccess: () => setOpen(false) },
+    );
+  };
+
+  return (
+    <>
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1.5}
+        sx={{ mb: 1.5, p: 1, borderRadius: 1, bgcolor: running ? '#fff4e5' : '#f5f7fa', border: '1px solid', borderColor: running ? '#f0c36d' : 'divider' }}
+      >
+        {running ? (
+          <>
+            <Chip size="small" color="warning" label="计时中" />
+            <Typography variant="body2" noWrap sx={{ flexGrow: 1, minWidth: 0 }}>
+              {running.description}
+            </Typography>
+            <Typography variant="h6" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>
+              {elapsedLabel}
+            </Typography>
+            <Button
+              size="small"
+              variant="contained"
+              color="error"
+              startIcon={<StopOutlined />}
+              onClick={() => stopTimer.mutate(running.id)}
+              disabled={stopTimer.isPending}
+            >
+              停止并保存
+            </Button>
+          </>
+        ) : (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
+              未开始计时
+            </Typography>
+            <Button size="small" variant="outlined" startIcon={<PlayArrowOutlined />} onClick={() => setOpen(true)}>
+              开始计时
+            </Button>
+          </>
+        )}
+      </Stack>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>开始计时</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+          <FormControl fullWidth>
+            <InputLabel id="timer-matter">案件 *</InputLabel>
+            <Select labelId="timer-matter" label="案件 *" value={form.matterId} onChange={(event) => setForm({ ...form, matterId: event.target.value })}>
+              {(matters ?? []).map((matter) => <MenuItem key={matter.id} value={String(matter.id)}>{matter.title}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="timer-user">人员 *</InputLabel>
+            <Select labelId="timer-user" label="人员 *" value={form.userId} onChange={(event) => setForm({ ...form, userId: event.target.value })}>
+              {(users ?? []).map((user) => <MenuItem key={user.id} value={String(user.id)}>{user.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <TextField size="small" label="工作内容 *" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} fullWidth />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)} color="inherit">取消</Button>
+          <Button variant="contained" onClick={submit} disabled={!form.matterId || !form.userId || !form.description.trim() || startTimer.isPending}>开始</Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
 
 export function TimeEntriesPanel({ matterId }: { matterId?: number }) {
   const { data: entries, isLoading, isError, error, refetch } = useTimeEntries(matterId ? { matterId } : {});
@@ -132,6 +253,7 @@ export function TimeEntriesPanel({ matterId }: { matterId?: number }) {
 
   return (
     <Box>
+      <TimerControl matterId={matterId} />
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
         <Typography variant="body2" color="text.secondary">
           共 {entries?.length ?? 0} 条 · 未开票 {entries?.filter((item) => !item.invoiced).length ?? 0} 条 · {formatNumber(entries?.filter((item) => !item.invoiced).reduce((sum, item) => sum + item.hours, 0))} 小时
@@ -164,7 +286,10 @@ export function TimeEntriesPanel({ matterId }: { matterId?: number }) {
                   <TableCell>{matters?.find((matter) => matter.id === entry.matterId)?.title ?? `#${entry.matterId}`}</TableCell>
                   <TableCell>{users?.find((user) => user.id === entry.userId)?.name ?? `#${entry.userId}`}</TableCell>
                   <TableCell sx={{ maxWidth: 260 }}><Typography variant="body2" noWrap>{entry.description}</Typography></TableCell>
-                  <TableCell align="right">{formatNumber(entry.hours)}</TableCell>
+                  <TableCell align="right">
+                    {formatNumber(entry.hours)}
+                    {entry.timerStartedAt && <Chip size="small" color="warning" label="计时中" sx={{ ml: 0.5, height: 18, fontSize: 10 }} />}
+                  </TableCell>
                   <TableCell align="right">{formatCurrency(entry.rate)}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>{formatCurrency(entry.amount)}</TableCell>
                   <TableCell>
@@ -390,6 +515,7 @@ export function InvoicesPanel({ matterId, clientId, autoOpen = false }: { matter
   const { data: invoices, isLoading, isError, error, refetch } = useInvoices({ matterId, clientId });
   const { data: clients } = useClients();
   const { data: matters } = useMatters();
+  const { data: approveUsers } = useUsers();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const deleteInvoice = useDeleteInvoice();
@@ -504,10 +630,13 @@ export function InvoicesPanel({ matterId, clientId, autoOpen = false }: { matter
                   <TableCell align="right">
                     <Tooltip title="明细"><IconButton size="small" onClick={() => setDetail(invoice)} aria-label="查看明细"><VisibilityOutlined fontSize="small" /></IconButton></Tooltip>
                     {(invoice.status === 'draft' || invoice.status === 'pending_approval') && (
-                      <Tooltip title="审批"><IconButton size="small" onClick={() => approveInvoice.mutate(invoice.id)} aria-label="审批账单"><CheckOutlined fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="审批（合伙人权限）"><IconButton size="small" onClick={() => approveInvoice.mutate({ id: invoice.id, actorId: approveUsers?.[0]?.id })} aria-label="审批账单"><CheckOutlined fontSize="small" /></IconButton></Tooltip>
                     )}
-                    {(invoice.status === 'approved' || invoice.status === 'pending_approval') && (
-                      <Tooltip title="发送"><IconButton size="small" onClick={() => sendInvoice.mutate(invoice.id)} aria-label="发送账单"><SendOutlined fontSize="small" /></IconButton></Tooltip>
+                    {invoice.status === 'approved' && (
+                      <Tooltip title="发送（审批通过）"><IconButton size="small" onClick={() => sendInvoice.mutate(invoice.id)} aria-label="发送账单"><SendOutlined fontSize="small" /></IconButton></Tooltip>
+                    )}
+                    {invoice.status === 'pending_approval' && (
+                      <Tooltip title="需先审批通过后才能发送"><span><IconButton size="small" disabled aria-label="发送账单"><SendOutlined fontSize="small" /></IconButton></span></Tooltip>
                     )}
                     {(invoice.status === 'sent' || invoice.status === 'approved' || invoice.status === 'pending_approval') && (
                       <Tooltip title="记录收款"><IconButton size="small" onClick={() => setPayTarget(invoice)} aria-label="记录收款"><PaymentsOutlined fontSize="small" /></IconButton></Tooltip>

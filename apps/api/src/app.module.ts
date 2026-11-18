@@ -24,11 +24,16 @@ import {
   Invoice,
   Lead,
   Matter,
+  MatterParty,
   MatterStage,
+  MatterTeamMember,
+  MessageTemplate,
   Note,
   Payment,
+  RolePermission,
   Statute,
   Task,
+  TaskTemplate,
   TimeEntry,
   TrustTransaction,
   User,
@@ -49,6 +54,7 @@ import { LeadsModule } from './modules/leads/leads.module';
 import { MattersModule } from './modules/matters/matters.module';
 import { NotesModule } from './modules/notes/notes.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
 import { SearchModule } from './modules/search/search.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { TimeEntriesModule } from './modules/time-entries/time-entries.module';
@@ -74,9 +80,12 @@ const shouldServeWeb = existsSync(join(webDistPath, 'index.html'));
         Contact,
         MatterStage,
         Matter,
+        MatterParty,
+        MatterTeamMember,
         Lead,
         ConflictCheck,
         Task,
+        TaskTemplate,
         Document,
         TimeEntry,
         Expense,
@@ -85,8 +94,10 @@ const shouldServeWeb = existsSync(join(webDistPath, 'index.html'));
         FeatureRecord,
         Invoice,
         Payment,
+        RolePermission,
         TrustTransaction,
         Communication,
+        MessageTemplate,
         Note,
         CourtRule,
         CourtHoliday,
@@ -114,6 +125,7 @@ const shouldServeWeb = existsSync(join(webDistPath, 'index.html'));
     FeaturesModule,
     InvoicesModule,
     PaymentsModule,
+    PermissionsModule,
     TrustTransactionsModule,
     CommunicationsModule,
     NotesModule,

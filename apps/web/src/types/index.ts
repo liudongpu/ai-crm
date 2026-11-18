@@ -128,6 +128,17 @@ export interface ConflictCheckResult {
 
 export type TaskType = 'task' | 'deadline' | 'hearing' | 'court' | 'reminder';
 
+export interface TaskTemplate extends BaseRecord {
+  name: string;
+  category: string;
+  title: string;
+  type: TaskType;
+  priority: Priority;
+  description?: string | null;
+  dueInDays?: number | null;
+  enabled: boolean;
+}
+
 export interface Task extends BaseRecord {
   title: string;
   type: TaskType;
@@ -149,6 +160,30 @@ export interface Task extends BaseRecord {
   sourceDetail?: string | null;
   matter?: Matter | null;
   assignee?: User | null;
+}
+
+export type PartyRole = 'plaintiff' | 'defendant' | 'third_party' | 'other';
+
+export interface MatterParty extends BaseRecord {
+  matterId: number;
+  role: PartyRole;
+  name: string;
+  idNumber?: string | null;
+  contact?: string | null;
+  clientId?: number | null;
+  note?: string | null;
+}
+
+export type MatterTeamRole = 'lead' | 'associate' | 'assistant' | 'viewer';
+
+export interface MatterTeamMember extends BaseRecord {
+  matterId: number;
+  userId: number;
+  role: MatterTeamRole;
+  canViewInternal: boolean;
+  userName: string;
+  userRole?: string | null;
+  title?: string | null;
 }
 
 export type DocumentCategory = 'contract' | 'pleading' | 'evidence' | 'correspondence' | 'template' | 'other';
@@ -173,6 +208,7 @@ export interface TimeEntry extends BaseRecord {
   matterId: number;
   userId: number;
   date: string;
+  timerStartedAt?: string | null;
   hours: number;
   description: string;
   billable: boolean;
@@ -258,8 +294,24 @@ export interface TrustTransaction extends BaseRecord {
   matter?: Matter | null;
 }
 
-export type CommunicationType = 'email' | 'sms' | 'call' | 'meeting' | 'message' | 'letter';
+export type CommunicationType =
+  | 'email'
+  | 'sms'
+  | 'call'
+  | 'meeting'
+  | 'message'
+  | 'letter'
+  | 'wechat'
+  | 'whatsapp'
+  | 'portal'
+  | 'internal';
 export type CommunicationDirection = 'inbound' | 'outbound';
+
+export interface CommunicationAttachment {
+  name: string;
+  kind: string;
+  refId?: number;
+}
 
 export interface Communication extends BaseRecord {
   matterId?: number | null;
@@ -271,10 +323,47 @@ export interface Communication extends BaseRecord {
   content: string;
   occurredAt: string;
   userId?: number | null;
+  conversationKey?: string | null;
+  senderName?: string | null;
+  unread?: boolean;
+  replied?: boolean;
+  needsFollowUp?: boolean;
+  internal?: boolean;
+  aiDraft?: boolean;
+  approved?: boolean;
+  templateId?: number | null;
+  attachments?: CommunicationAttachment[] | null;
   matter?: Matter | null;
   client?: Client | null;
   contact?: Contact | null;
   user?: User | null;
+}
+
+/** M7 会话聚合（左侧会话列表）。 */
+export interface InboxConversation {
+  key: string;
+  clientId: number | null;
+  clientName: string | null;
+  matterId: number | null;
+  matterTitle: string | null;
+  lastMessage: string;
+  lastAt: string;
+  lastDirection: string;
+  lastType: string;
+  count: number;
+  unread: number;
+  needsFollowUp: number;
+  unreplied: number;
+  channels: string[];
+}
+
+/** M7 消息模板。 */
+export interface MessageTemplate extends BaseRecord {
+  code: string;
+  name: string;
+  category: string;
+  content: string;
+  enabled: boolean;
 }
 
 export type NoteTargetType = 'matter' | 'client' | 'contact' | 'lead' | 'document';
@@ -286,6 +375,65 @@ export interface Note extends BaseRecord {
   targetId: number;
   authorId?: number | null;
   author?: User | null;
+}
+
+/** 5 张核心报表：收入、应收、工时、案件、客户。 */
+export interface CoreReports {
+  revenue: {
+    collectedThisMonth: number;
+    collectedThisQuarter: number;
+    collectedTotal: number;
+    billedThisMonth: number;
+    outstanding: number;
+    byMonth: Array<{ month: string; value: number }>;
+  };
+  receivables: {
+    total: number;
+    count: number;
+    aging: { current: number; days1to30: number; days31to60: number; over60: number };
+    rows: Array<{
+      invoiceId: number;
+      number: string;
+      clientId: number;
+      clientName: string;
+      remaining: number;
+      dueDate: string;
+      agingDays: number;
+      status: string;
+    }>;
+  };
+  time: {
+    rows: Array<{
+      name: string;
+      monthHours: number;
+      weekHours: number;
+      billableHours: number;
+      nonBillableHours: number;
+      amount: number;
+    }>;
+  };
+  matters: {
+    open: number;
+    closed: number;
+    byArea: Array<{ area: string; count: number }>;
+    byOwner: Array<{ name: string; count: number }>;
+  };
+  clients: {
+    newThisMonth: number;
+    newThisQuarter: number;
+    revenueByClient: Array<{ clientId: number; name: string; value: number }>;
+  };
+}
+
+export interface RolePermission extends BaseRecord {
+  role: string;
+  permission: string;
+  enabled: boolean;
+}
+
+export interface UserPermissions {
+  role: string | null;
+  permissions: Record<string, boolean>;
 }
 
 export interface DashboardSummary {
@@ -301,7 +449,18 @@ export interface DashboardSummary {
     outstandingAmount: number;
     trustBalance: number;
     revenueThisMonth: number;
+    unrepliedMessages: number;
+    followUpMessages: number;
+    upcomingDeadlines: number;
+    overdueInvoices: number;
   };
+  riskAlerts: Array<{
+    type: string;
+    level: 'high' | 'medium' | 'low';
+    label: string;
+    detail: string;
+    route: string;
+  }>;
   mattersByStage: Array<{ id: number; name: string; color: string; count: number; value: number }>;
   tasksByType: Array<{ type: string; count: number }>;
   recentMatters: Matter[];
@@ -694,6 +853,16 @@ export type CommunicationInput = {
   content: string;
   occurredAt?: string;
   userId?: number | null;
+  conversationKey?: string | null;
+  senderName?: string | null;
+  unread?: boolean;
+  replied?: boolean;
+  needsFollowUp?: boolean;
+  internal?: boolean;
+  aiDraft?: boolean;
+  approved?: boolean;
+  templateId?: number | null;
+  attachments?: CommunicationAttachment[] | null;
 };
 
 export type NoteInput = {
