@@ -51,7 +51,39 @@ import type {
   LeadConvertInput,
   LeadConvertResult,
   LeadInput,
+  AdminAssistantInput,
+  AdminAssistantResult,
+  AiDraftResult,
+  CaseAnalysisInput,
+  CaseAnalysisResult,
+  ContractReviewInput,
+  ContractReviewResult,
+  DraftInput,
+  DraftResult,
+  InsightInput,
+  InsightResult,
+  LegalResearchInput,
+  ResearchResult,
+  CompanyCheckInput,
+  CompanyCheckResponse,
+  CompensationInput,
+  CompensationResult,
+  DeadlineToolInput,
+  DeadlineToolResult,
+  EvidenceCatalogInput,
+  EvidenceCatalogResult,
+  InterestInput,
+  InterestResult,
+  LitigationFeeInput,
+  LitigationFeeResult,
+  OcrBatchInput,
+  OcrBatchResult,
+  RedactInput,
+  RedactResult,
+  ToolCalculationInput,
+  ToolResult,
   MatterInput,
+  MatterCategoryInput,
   MatterParty,
   MatterTeamMember,
   MessageTemplate,
@@ -78,6 +110,7 @@ export const keys = {
   clients: ['clients'] as const,
   contacts: ['contacts'] as const,
   matterStages: ['matterStages'] as const,
+  matterCategories: ['matterCategories'] as const,
   matters: ['matters'] as const,
   matterParties: ['matterParties'] as const,
   matterTeam: ['matterTeam'] as const,
@@ -123,6 +156,10 @@ export const keys = {
   dashboard: ['dashboard'] as const,
   reports: ['reports'] as const,
   search: ['search'] as const,
+  legalToolbox: {
+    meta: ['legalToolbox', 'meta'] as const,
+    calculations: ['legalToolbox', 'calculations'] as const,
+  },
 };
 
 type Params = Record<string, unknown>;
@@ -208,6 +245,12 @@ function useDetail<T>(key: readonly unknown[], id: number | undefined, fn: () =>
 
 export const useUsers = () => useList(keys.users, () => api.users.list());
 export const usePermissions = () => useQuery({ queryKey: keys.permissions, queryFn: api.permissions.list });
+/** 当前用户权限（由登录用户 id 决定；渠道与审批权限在后端强制校验）。 */
+export const useMyPermissions = (userId?: number) =>
+  useQuery({
+    queryKey: [...keys.permissions, 'me', userId],
+    queryFn: () => api.permissions.me(userId),
+  });
 export const useUpdatePermission = () =>
   useActionMutation<{ id: number; enabled: boolean }>(
     (args) => api.permissions.update(args.id, args.enabled),
@@ -222,6 +265,13 @@ export const useContacts = (params: Params = {}) => useList(keys.contacts, () =>
 export const useContact = (id?: number) => useDetail(keys.contacts, id, () => api.contacts.get(id!));
 
 export const useMatterStages = () => useList(keys.matterStages, () => api.matterStages.list());
+export const useMatterCategories = () => useList(keys.matterCategories, () => api.matterCategories.list());
+export const useCreateMatterCategory = () =>
+  useCreateMutation<MatterCategoryInput>(api.matterCategories.create, '案例分类已创建');
+export const useUpdateMatterCategory = () =>
+  useUpdateMutation<MatterCategoryInput>((args) => api.matterCategories.update(args.id, args.data), '案例分类已更新');
+export const useDeleteMatterCategory = () =>
+  useDeleteMutation(api.matterCategories.remove, '案例分类已删除');
 export const useMatters = (params: Params = {}) => useList(keys.matters, () => api.matters.list(params), params);
 export const useMatter = (id?: number) => useDetail(keys.matters, id, () => api.matters.get(id!));
 export const useMatterParties = (matterId: number) =>
@@ -501,10 +551,9 @@ export const useMarkCommunicationReplied = () =>
 export const useToggleCommunicationFollowUp = () =>
   useActionMutation<number>((id) => api.communications.toggleFollowUp(id));
 export const useAiDraft = () =>
-  useActionMutation<
-    { matterId?: number; intent?: string },
-    { content: string; source: string; needsHumanReview: boolean }
-  >((args) => api.communications.aiDraft(args));
+  useActionMutation<{ matterId?: number; intent?: string }, AiDraftResult>((args) =>
+    api.communications.aiDraft(args),
+  );
 export const useCreateMessageTemplate = () =>
   useCreateMutation<Partial<MessageTemplate>>(api.communications.templates.create, '消息模板已创建');
 export const useUpdateMessageTemplate = () =>
@@ -614,3 +663,62 @@ export const useUpdateWorkspaceSettings = (featureCode: string) => {
     onError: useNotifyError(),
   });
 };
+
+/* ---------------------------- Legal AI hooks ---------------------------- */
+
+/** 生成动作均只产出草稿，不写入/发送任何对外数据，故不需 refresh。 */
+function useLegalAiMutation<TInput extends { actorId?: number }, TResult>(fn: (data: TInput) => Promise<TResult>) {
+  const onError = useNotifyError();
+  // 演示环境以第一位用户身份发起请求；后端据此校验「使用法律 AI 辅助」权限。
+  const { data: users } = useUsers();
+  const actorId = users?.[0]?.id;
+  return useMutation({
+    mutationFn: (data: TInput) => fn(actorId ? { ...data, actorId } : data),
+    onError,
+  });
+}
+
+export const useCaseAnalysis = () =>
+  useLegalAiMutation<CaseAnalysisInput, CaseAnalysisResult>(api.legalAi.caseAnalysis);
+export const useDraftDocument = () => useLegalAiMutation<DraftInput, DraftResult>(api.legalAi.draft);
+export const useContractReview = () =>
+  useLegalAiMutation<ContractReviewInput, ContractReviewResult>(api.legalAi.contractReview);
+export const useLegalResearch = () =>
+  useLegalAiMutation<LegalResearchInput, ResearchResult>(api.legalAi.research);
+export const useAdminAssistant = () =>
+  useLegalAiMutation<AdminAssistantInput, AdminAssistantResult>(api.legalAi.adminAssistant);
+export const useAiInsights = () => useLegalAiMutation<InsightInput, InsightResult>(api.legalAi.insights);
+
+/* -------------------------- Legal Toolbox hooks -------------------------- */
+
+/** 本地规则计算不写库，不刷新缓存；错误由调用方按需提示。 */
+function useToolboxMutation<TInput, TResult>(fn: (data: TInput) => Promise<TResult>) {
+  return useMutation({ mutationFn: fn, onError: useNotifyError() });
+}
+
+export const useToolboxMeta = () =>
+  useQuery({ queryKey: keys.legalToolbox.meta, queryFn: api.legalToolbox.meta });
+
+export const useLitigationFee = () =>
+  useToolboxMutation<LitigationFeeInput, ToolResult<LitigationFeeResult>>(api.legalToolbox.litigationFee);
+export const useInterest = () =>
+  useToolboxMutation<InterestInput, ToolResult<InterestResult>>(api.legalToolbox.interest);
+export const useCompensation = () =>
+  useToolboxMutation<CompensationInput, ToolResult<CompensationResult>>(api.legalToolbox.compensation);
+export const useToolDeadline = () =>
+  useToolboxMutation<DeadlineToolInput, ToolResult<DeadlineToolResult>>(api.legalToolbox.deadline);
+export const useRedact = () =>
+  useToolboxMutation<RedactInput, ToolResult<RedactResult>>(api.legalToolbox.redact);
+export const useEvidenceCatalog = () =>
+  useToolboxMutation<EvidenceCatalogInput, ToolResult<EvidenceCatalogResult>>(api.legalToolbox.evidenceCatalog);
+export const useOcrBatch = () =>
+  useToolboxMutation<OcrBatchInput, ToolResult<OcrBatchResult>>(api.legalToolbox.ocrBatch);
+export const useCompanyCheck = () =>
+  useToolboxMutation<CompanyCheckInput, CompanyCheckResponse>(api.legalToolbox.companyCheck);
+
+export const useToolCalculations = (params: { matterId?: number; toolCode?: string } = {}) =>
+  useList(keys.legalToolbox.calculations, () => api.legalToolbox.calculations.list(params), params);
+export const useSaveToolCalculation = () =>
+  useCreateMutation<ToolCalculationInput>(api.legalToolbox.calculations.create, '计算记录已保存到当前案件');
+export const useDeleteToolCalculation = () =>
+  useDeleteMutation(api.legalToolbox.calculations.remove, '计算记录已删除');

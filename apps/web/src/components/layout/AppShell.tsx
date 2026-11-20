@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import AccountBalanceOutlined from '@mui/icons-material/AccountBalanceOutlined';
 import AddOutlined from '@mui/icons-material/AddOutlined';
-import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined';
 import BarChartOutlined from '@mui/icons-material/BarChartOutlined';
+import BuildOutlined from '@mui/icons-material/BuildOutlined';
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined';
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import EmailOutlined from '@mui/icons-material/EmailOutlined';
@@ -49,18 +49,15 @@ import { moduleHref, resolveNavigation, type Navigation } from '@/lib/navigation
 
 /** One icon per primary module; reused by both the top tabs and the sidebar. */
 const moduleIcons: Record<string, ReactElement> = {
-  grow: <PersonOutline fontSize="small" />,
-  manage: <GavelOutlined fontSize="small" />,
-  calendar: <CalendarMonthOutlined fontSize="small" />,
-  draft: <DescriptionOutlined fontSize="small" />,
-  communicate: <EmailOutlined fontSize="small" />,
-  billing: <ReceiptLongOutlined fontSize="small" />,
-  accounting: <AccountBalanceOutlined fontSize="small" />,
-  work_ai: <PsychologyOutlined fontSize="small" />,
-  reports: <BarChartOutlined fontSize="small" />,
-  automation: <AutoAwesomeOutlined fontSize="small" />,
-  integrations: <ExtensionOutlined fontSize="small" />,
-  security: <SecurityOutlined fontSize="small" />,
+  dashboard: <BarChartOutlined fontSize="small" />,
+  acquire: <PersonOutline fontSize="small" />,
+  matters: <GavelOutlined fontSize="small" />,
+  legal_ai: <PsychologyOutlined fontSize="small" />,
+  legal_toolbox: <BuildOutlined fontSize="small" />,
+  finance: <ReceiptLongOutlined fontSize="small" />,
+  settings: <SecurityOutlined fontSize="small" />,
+  communication: <EmailOutlined fontSize="small" />,
+  other: <ExtensionOutlined fontSize="small" />,
 };
 
 const createMenu = [
@@ -69,8 +66,9 @@ const createMenu = [
   { label: '新联系人', to: '/contacts?new=1' },
   { label: '新咨询线索', to: '/leads?new=1' },
   { label: '新任务', to: '/tasks?new=1' },
+  { label: '新日程', to: '/schedule?new=1' },
   { label: '新文档', to: '/documents?new=1' },
-  { label: '新账单', to: '/billing?new=1' },
+  { label: '新账单', to: '/billing?tab=invoices&new=1' },
   { label: '新信托交易', to: '/trust?new=1' },
   { label: '新沟通记录', to: '/communications?new=1' },
 ];

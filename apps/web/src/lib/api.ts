@@ -6,6 +6,7 @@ import type {
   ClientInput,
   Communication,
   CommunicationInput,
+  AiDraftResult,
   InboxConversation,
   MessageTemplate,
   ConflictCheck,
@@ -44,13 +45,46 @@ import type {
   LeadConvertInput,
   LeadConvertResult,
   LeadInput,
+  AdminAssistantInput,
+  AdminAssistantResult,
+  CaseAnalysisInput,
+  CaseAnalysisResult,
+  ContractReviewInput,
+  ContractReviewResult,
+  DraftInput,
+  DraftResult,
+  InsightInput,
+  InsightResult,
+  LegalResearchInput,
+  ResearchResult,
+  CompanyCheckInput,
+  CompanyCheckResponse,
+  CompensationInput,
+  CompensationResult,
+  DeadlineToolInput,
+  DeadlineToolResult,
+  EvidenceCatalogInput,
+  EvidenceCatalogResult,
+  InterestInput,
+  InterestResult,
+  LitigationFeeInput,
+  LitigationFeeResult,
+  OcrBatchInput,
+  OcrBatchResult,
+  RedactInput,
+  RedactResult,
+  ToolboxMetaResult,
+  ToolCalculation,
+  ToolCalculationInput,
+  ToolResult,
   Matter,
   MatterInput,
   MatterParty,
   MatterTeamMember,
   MatterTeamRole,
   MatterStage,
-  MatterStageInput,
+  MatterCategory,
+  MatterCategoryInput,
   Note,
   NoteInput,
   Payment,
@@ -258,7 +292,9 @@ export const api = {
   users: crud<User, UserInput>('users'),
   clients: crud<Client, ClientInput>('clients'),
   contacts: crud<Contact, ContactInput>('contacts'),
-  matterStages: crud<MatterStage, MatterStageInput>('matter-stages'),
+  // 案件阶段为后端预置只读数据，仅提供列表接口（其他 CRUD 方法后端未实现）。
+  matterStages: { list: () => request<MatterStage[]>('/matter-stages') },
+  matterCategories: crud<MatterCategory, MatterCategoryInput>('matter-categories'),
   matters: {
     ...crud<Matter, MatterInput>('matters'),
     move: (id: number, stageId: number, position?: number) =>
@@ -328,9 +364,7 @@ export const api = {
     markReplied: (id: number) => send<Communication>('POST', `/communications/${id}/replied`),
     toggleFollowUp: (id: number) => send<Communication>('POST', `/communications/${id}/follow-up`),
     aiDraft: (params: { matterId?: number; intent?: string } = {}) =>
-      request<{ content: string; source: string; needsHumanReview: boolean }>(
-        `/communications/ai-draft${toQuery(params)}`,
-      ),
+      request<AiDraftResult>(`/communications/ai-draft${toQuery(params)}`),
     templates: {
       list: () => request<MessageTemplate[]>('/communications/templates'),
       create: (data: Partial<MessageTemplate>) =>
@@ -391,10 +425,14 @@ export const api = {
       requestText(`/calendar/feed.ics${toQuery(params)}`),
     importIcs: (data: IcsImportInput) =>
       send<IcsImportResult>('POST', '/calendar/import', data),
+    // 提醒后端未提供按 id 查询接口，这里只暴露真实可用的方法。
     reminders: {
-      ...crud<CalendarReminder, ReminderInput>('calendar/reminders'),
+      list: (params: Record<string, unknown> = {}) =>
+        request<CalendarReminder[]>(`/calendar/reminders${toQuery(params)}`),
+      create: (data: ReminderInput) => send<CalendarReminder>('POST', '/calendar/reminders', data),
       update: (id: number, data: Partial<ReminderInput>) =>
         send<CalendarReminder>('PATCH', `/calendar/reminders/${id}`, data),
+      remove: (id: number) => send<{ id: number }>('DELETE', `/calendar/reminders/${id}`),
     },
     timeLink: {
       unlogged: (params: Record<string, unknown> = {}) =>
@@ -413,5 +451,44 @@ export const api = {
     summary: () => request<DashboardSummary>('/dashboard/summary'),
     coreReports: () => request<CoreReports>('/dashboard/core-reports'),
     reports: (days = 90) => request<ReportData>(`/dashboard/reports?days=${days}`),
+  },
+  /** 法律 AI 辅助：本地规则 + 真实业务数据，输出均为需人工核对的草稿。 */
+  legalAi: {
+    caseAnalysis: (data: CaseAnalysisInput) => send<CaseAnalysisResult>('POST', '/legal-ai/case-analysis', data),
+    draft: (data: DraftInput) => send<DraftResult>('POST', '/legal-ai/draft', data),
+    contractReview: (data: ContractReviewInput) =>
+      send<ContractReviewResult>('POST', '/legal-ai/contract-review', data),
+    research: (data: LegalResearchInput) => send<ResearchResult>('POST', '/legal-ai/research', data),
+    adminAssistant: (data: AdminAssistantInput) =>
+      send<AdminAssistantResult>('POST', '/legal-ai/admin-assistant', data),
+    insights: (data: InsightInput) => send<InsightResult>('POST', '/legal-ai/insights', data),
+  },
+  /** 律师工具箱：本地规则计算 + 标注清晰的演示数据。 */
+  legalToolbox: {
+    meta: () => request<ToolboxMetaResult>('/legal-toolbox/meta'),
+    litigationFee: (data: LitigationFeeInput) =>
+      send<ToolResult<LitigationFeeResult>>('POST', '/legal-toolbox/litigation-fee', data),
+    interest: (data: InterestInput) =>
+      send<ToolResult<InterestResult>>('POST', '/legal-toolbox/interest', data),
+    compensation: (data: CompensationInput) =>
+      send<ToolResult<CompensationResult>>('POST', '/legal-toolbox/compensation', data),
+    deadline: (data: DeadlineToolInput) =>
+      send<ToolResult<DeadlineToolResult>>('POST', '/legal-toolbox/deadline', data),
+    redact: (data: RedactInput) =>
+      send<ToolResult<RedactResult>>('POST', '/legal-toolbox/redact', data),
+    evidenceCatalog: (data: EvidenceCatalogInput) =>
+      send<ToolResult<EvidenceCatalogResult>>('POST', '/legal-toolbox/evidence-catalog', data),
+    ocrBatch: (data: OcrBatchInput) =>
+      send<ToolResult<OcrBatchResult>>('POST', '/legal-toolbox/ocr-batch', data),
+    companyCheck: (data: CompanyCheckInput) =>
+      send<CompanyCheckResponse>('POST', '/legal-toolbox/company-check', data),
+    calculations: {
+      list: (params: { matterId?: number; toolCode?: string } = {}) =>
+        request<ToolCalculation[]>(`/legal-toolbox/calculations${toQuery(params)}`),
+      get: (id: number) => request<ToolCalculation>(`/legal-toolbox/calculations/${id}`),
+      create: (data: ToolCalculationInput) =>
+        send<ToolCalculation>('POST', '/legal-toolbox/calculations', data),
+      remove: (id: number) => send<{ id: number }>('DELETE', `/legal-toolbox/calculations/${id}`),
+    },
   },
 };

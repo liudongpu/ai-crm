@@ -54,6 +54,34 @@ export interface MatterStage extends BaseRecord {
   isFinal: boolean;
 }
 
+export interface MatterCategoryStage {
+  name: string;
+  color: string;
+  probability: number;
+  isFinal: boolean;
+}
+
+/** 案例分类：与案件的 practiceArea 对应，并携带该分类的默认办理流程。 */
+export interface MatterCategory extends BaseRecord {
+  code: string;
+  name: string;
+  description?: string | null;
+  color: string;
+  position: number;
+  enabled: boolean;
+  stages: MatterCategoryStage[];
+}
+
+export type MatterCategoryInput = {
+  code: string;
+  name: string;
+  description?: string | null;
+  color?: string;
+  enabled?: boolean;
+  position?: number;
+  stages: MatterCategoryStage[];
+};
+
 export type MatterStatus = 'open' | 'on_hold' | 'closed' | 'won' | 'lost';
 export type Priority = 'low' | 'medium' | 'high';
 
@@ -364,6 +392,24 @@ export interface MessageTemplate extends BaseRecord {
   category: string;
   content: string;
   enabled: boolean;
+}
+
+/** 沟通中心本地 AI 起草结果：模板 + 案件真实数据，发送前必须人工确认。 */
+export interface AiDraftResult {
+  content: string;
+  source: string;
+  needsHumanReview: boolean;
+  template: { code: string; name: string } | null;
+  context: {
+    matterTitle: string | null;
+    caseNumber: string | null;
+    clientName: string;
+    stage: string | null;
+    recentCommunications: number;
+    openTasks: number;
+    topic: string;
+  };
+  disclaimer: string;
 }
 
 export type NoteTargetType = 'matter' | 'client' | 'contact' | 'lead' | 'document';
@@ -1058,3 +1104,478 @@ export type TimeLinkInput = {
   billable?: boolean;
   rate?: number;
 };
+
+/* ---------------------------- Legal AI domain ---------------------------- */
+
+export interface LegalAiMeta {
+  engine: string;
+  needsHumanReview: boolean;
+  disclaimer: string;
+  error?: string;
+}
+
+export interface CaseTimelineItem {
+  date: string;
+  label: string;
+  type: 'hearing' | 'deadline' | 'task' | 'fact' | 'filing';
+  source: string;
+  snippet: string;
+}
+
+export interface CaseRelationNode {
+  id: string;
+  label: string;
+  role: string;
+  kind: 'party' | 'client';
+}
+
+export interface CaseRelationLink {
+  from: string;
+  to: string;
+  relation: string;
+}
+
+export interface CaseDispute {
+  label: string;
+  basis: string;
+  support: string;
+}
+
+export interface CaseAnalysisResult extends LegalAiMeta {
+  matterId: number;
+  matterTitle: string;
+  caseNumber: string | null;
+  evidenceCount: number;
+  documents: Array<{ id: number; title: string; category: string }>;
+  timeline: CaseTimelineItem[];
+  relations: { nodes: CaseRelationNode[]; links: CaseRelationLink[] };
+  disputes: CaseDispute[];
+  gaps: string[];
+  summary: string;
+}
+
+export interface StatuteCitation {
+  code: string;
+  title: string;
+  article: string;
+  text: string;
+  status: string;
+  effectiveFrom: string;
+  source: string;
+  verified: boolean;
+  statusValid: boolean;
+  statusNote: string;
+}
+
+export interface DraftSection {
+  heading: string;
+  content: string;
+}
+
+export interface DraftResult extends LegalAiMeta {
+  matterId: number;
+  docType: 'complaint' | 'letter' | 'answer' | 'opinion';
+  stance: string;
+  title: string;
+  sections: DraftSection[];
+  fullText: string;
+  references: Array<{ id: number; title: string; version: string }>;
+  citations: StatuteCitation[];
+  reviewChecklist: string[];
+  pendingTasks: string[];
+  noteCount: number;
+  sourceCounts: { documents: number; notes: number; parties: number };
+}
+
+export interface ContractRisk {
+  clause: string;
+  label: string;
+  level: '高' | '中' | '低';
+  category: string;
+  advice: string;
+  replacement: string;
+  statute: StatuteCitation;
+}
+
+export interface ContractMissing {
+  label: string;
+  suggestion: string;
+}
+
+export interface ContractReviewResult extends LegalAiMeta {
+  documentId: number | null;
+  documentTitle: string;
+  stance: 'buyer' | 'seller' | 'neutral';
+  toughness: 'standard' | 'strong';
+  stanceLabel: string;
+  clauseCount: number;
+  risks: ContractRisk[];
+  missing: ContractMissing[];
+  summary: string;
+}
+
+export interface CaseBrief {
+  id: string;
+  title: string;
+  court: string;
+  year: string;
+  cause: string;
+  holding: string;
+  topics: string[];
+}
+
+export interface ResearchResult extends LegalAiMeta {
+  question: string;
+  source: string;
+  conclusion: string;
+  citations: StatuteCitation[];
+  validCitations: StatuteCitation[];
+  invalidCitations: StatuteCitation[];
+  antiHallucination: string;
+  caseBriefs: CaseBrief[];
+  trackedStatutes: Array<{ id: number; title: string; dueDate: string | null; status: string; note: string | null }>;
+  disclaimer: string;
+}
+
+export interface AdminReminder {
+  date: string;
+  label: string;
+  source: string;
+  type: string;
+}
+
+export interface AdminAssistantResult extends LegalAiMeta {
+  periodDays: number;
+  weeklyReport: string;
+  sourceCounts: { timeEntries: number; completedTasks: number; outbound: number };
+  privacyNote: string;
+  reminders: AdminReminder[];
+  reminderNote: string;
+  ownerOptions: Array<{ id: number; name: string }>;
+}
+
+export type CaseAnalysisInput = { matterId: number; text?: string; actorId?: number };
+export type DraftInput = { matterId: number; docType: 'complaint' | 'letter' | 'answer' | 'opinion'; stance?: string; actorId?: number };
+export type ContractReviewInput = {
+  documentId?: number;
+  text?: string;
+  stance: 'buyer' | 'seller' | 'neutral';
+  toughness: 'standard' | 'strong';
+  actorId?: number;
+};
+export type LegalResearchInput = { question: string; matterId?: number; actorId?: number };
+export type AdminAssistantInput = { matterId?: number; periodDays?: number; actorId?: number };
+
+/** AI 洞察：经营趋势、待办优先级、风险提示与客户活跃度。 */
+export interface InsightTrend {
+  key: string;
+  label: string;
+  unit: string;
+  detail: string;
+  current: number;
+  previous: number;
+  changePct: number;
+  direction: 'up' | 'down' | 'flat';
+}
+
+export interface InsightPriority {
+  id: number;
+  title: string;
+  type: string;
+  priority: string;
+  dueDate: string | null;
+  matterTitle: string | null;
+  score: number;
+  reason: string;
+  route: string;
+}
+
+export interface InsightRisk {
+  type: string;
+  level: 'high' | 'medium' | 'low';
+  label: string;
+  detail: string;
+  count: number;
+  route: string;
+}
+
+export interface InsightClientActivity {
+  clientId: number;
+  name: string;
+  lastContactDate: string | null;
+  daysSince: number;
+  status: '活跃' | '需关注' | '沉默';
+  suggestion: string;
+}
+
+export interface InsightResult extends LegalAiMeta {
+  period: { days: number; from: string; to: string };
+  trends: InsightTrend[];
+  priorities: InsightPriority[];
+  risks: InsightRisk[];
+  clientActivity: InsightClientActivity[];
+  summary: string;
+  rankingRule: string;
+  sourceCounts: {
+    matters: number;
+    timeEntries: number;
+    invoices: number;
+    clients: number;
+    tasks: number;
+    communications: number;
+  };
+}
+
+export type InsightInput = { periodDays?: number; matterId?: number; actorId?: number };
+
+/* ------------------------- Legal Toolbox domain ------------------------- */
+
+/** 工具箱统一声明：本地规则 + 需人工核对。 */
+export interface ToolboxMeta {
+  engine: string;
+  needsHumanReview: boolean;
+  disclaimer: string;
+  error?: string;
+}
+
+export interface ToolResult<T> extends ToolboxMeta {
+  result: T;
+}
+
+export interface ToolboxMetaResult extends ToolboxMeta {
+  jurisdictions: Array<{ code: string; label: string }>;
+  lprHistory: Array<{ from: string; oneYear: number; fiveYear: number }>;
+  compensationStats: Record<string, { disposable: number; avgWage: number; label: string }>;
+  deadlinePresets: Record<string, { label: string; days: number; basis: string }>;
+  feeCaseTypes: Array<{ code: string; label: string }>;
+  demoCompanies: Array<{ name: string; riskLevel: string }>;
+}
+
+export interface FeeBracketRow {
+  label: string;
+  base: number;
+  rate: number;
+  fee: number;
+}
+
+export interface LitigationFeeResult {
+  caseType: string;
+  caseTypeLabel: string;
+  jurisdiction: string;
+  jurisdictionLabel: string;
+  amount: number;
+  baseFee: number;
+  reduction: string;
+  finalFee: number;
+  detail: FeeBracketRow[] | null;
+  preservationFee: number;
+  preservationCapped: boolean;
+  arbitration: { table: string; fee: number };
+  localFees: { announcement: number; guaranteeService: number; note: string };
+  totalEstimate: number;
+  disclaimer: string;
+}
+
+export interface InterestRow {
+  from: string;
+  to: string;
+  days: number;
+  rate: number;
+  interest: number;
+  principalAfter: number;
+}
+
+export interface InterestResult {
+  error?: string;
+  principal: number;
+  paidAmount: number;
+  rateSource: string;
+  compound: string;
+  segments: InterestRow[];
+  totalInterest: number;
+  delayDays: number;
+  delayInterest: number;
+  total: number;
+  disclaimer: string;
+}
+
+export interface CompensationItem {
+  label: string;
+  amount: number;
+  basis: string;
+}
+
+export interface CompensationResult {
+  type: string;
+  region: string;
+  items: CompensationItem[];
+  total: number;
+  disclaimer: string;
+}
+
+export interface DeadlineToolResult {
+  type: string;
+  label: string;
+  basis: string;
+  triggerDate: string;
+  days: number;
+  businessDaysOnly: boolean;
+  items: DeadlineItem[];
+  holidayCount: number;
+  disclaimer: string;
+}
+
+export interface RedactionHit {
+  kind: string;
+  raw: string;
+  masked: string;
+  start: number;
+  end: number;
+}
+
+export interface RedactResult {
+  inputLength: number;
+  redactedText: string;
+  hitCount: number;
+  byKind: Record<string, number>;
+  hits: RedactionHit[];
+  disclaimer: string;
+}
+
+export interface CatalogRow {
+  index: number;
+  name: string;
+  type: string;
+  source: string;
+  pageFrom: number;
+  pageTo: number;
+  pages: number;
+  note: string;
+}
+
+export interface EvidenceCatalogResult {
+  caseName: string;
+  submitter: string | null;
+  rows: CatalogRow[];
+  totalGroups: number;
+  totalPages: number;
+  text: string;
+  disclaimer: string;
+}
+
+export interface OcrJob {
+  id: number;
+  name: string;
+  size: number | null;
+  pages: number;
+  fileType: string;
+  supported: boolean;
+  status: string;
+  outputName: string | null;
+  confidence: number | null;
+}
+
+export interface OcrBatchResult {
+  jobs: OcrJob[];
+  total: number;
+  supported: number;
+  mode: string;
+  disclaimer: string;
+}
+
+export interface CompanyRecord {
+  name: string;
+  aliases: string[];
+  creditCode: string;
+  legalRepresentative: string;
+  registeredCapital: string;
+  establishedAt: string;
+  status: string;
+  address: string;
+  businessScope: string;
+  riskLevel: '低' | '中' | '高';
+  shareholders: Array<{ id: string; name: string; type: 'company' | 'person'; ratio: number }>;
+  equityEdges: Array<{ from: string; to: string; label: string }>;
+  lawsuits: Array<{ caseNo: string; cause: string; role: string; amount: string; date: string; status: string }>;
+  executions: Array<{ caseNo: string; amount: string; date: string; status: string }>;
+  restrictions: Array<{ caseNo: string; date: string; reason: string }>;
+}
+
+export interface CompanyCheckResponse extends ToolboxMeta {
+  found: boolean;
+  query: string;
+  result: CompanyRecord | null;
+  dataSource?: string;
+  dataSourceLabel?: string;
+  message: string;
+}
+
+export interface ToolCalculation extends BaseRecord {
+  matterId: number;
+  toolCode: string;
+  toolName: string;
+  title: string;
+  input: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+  summary: string | null;
+  createdById: number | null;
+}
+
+export interface ToolCalculationInput {
+  matterId: number;
+  toolCode: string;
+  toolName: string;
+  title: string;
+  input: Record<string, unknown>;
+  result: Record<string, unknown>;
+  summary?: string;
+}
+
+export type LitigationFeeInput = {
+  caseType: string;
+  amount?: number;
+  jurisdiction?: string;
+  reduction?: 'none' | 'half';
+};
+export type InterestInput = {
+  principal: number;
+  startDate: string;
+  endDate: string;
+  compound?: 'single' | 'yearly' | 'monthly';
+  rateSource?: '1y' | '5y' | 'manual';
+  manualRate?: number;
+  segments?: Array<{ from: string; rate: number }>;
+  paidAmount?: number;
+  doubleDelay?: boolean;
+  delayStartDate?: string;
+};
+export type CompensationInput = {
+  type: 'personal' | 'work_injury' | 'work_death' | 'economic';
+  region?: string;
+  medicalCost?: number;
+  lostWageMonths?: number;
+  monthlyWage?: number;
+  careMonths?: number;
+  disabilityGrade?: number;
+  otherCost?: number;
+  yearsWorked?: number;
+  compensationMode?: 'N' | 'N1' | '2N';
+  applyTripleCap?: boolean;
+  localAverageWage?: number;
+};
+export type DeadlineToolInput = {
+  type: 'appeal' | 'evidence' | 'execution' | 'answer' | 'custom';
+  triggerDate: string;
+  days?: number;
+  label?: string;
+  businessDaysOnly?: boolean;
+};
+export type RedactInput = { text: string; only?: 'idCard' | 'bankCard' | 'phone' | 'email' };
+export type EvidenceCatalogInput = {
+  caseName: string;
+  matterId?: number;
+  submitter?: string;
+  items: Array<{ name: string; type?: string; source?: string; pages?: number; note?: string }>;
+};
+export type OcrBatchInput = { files: Array<{ name: string; size?: number; pages?: number }> };
+export type CompanyCheckInput = { name: string };

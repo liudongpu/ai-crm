@@ -20,6 +20,7 @@ import {
   Matter,
   MatterParty,
   MatterStage,
+  MatterCategory,
   MatterTeamMember,
   MessageTemplate,
   Note,
@@ -41,6 +42,7 @@ import { SeedService } from './seed.service';
     TypeOrmModule.forFeature([
       User,
       MatterStage,
+      MatterCategory,
       Client,
       Contact,
       Matter,
