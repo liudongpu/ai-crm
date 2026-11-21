@@ -686,13 +686,13 @@ const FEATURES: FeatureSeed[] = [
   { module: 'finance', code: 'general_ledger', name: '总账与报表', route: '/workspace/general_ledger', description: '总账科目、凭证、财务报表、应付支出与会计协作。', titles: ['月末结转凭证配置', '季度经营报表生成'] },
 
   // ── M7 设置与安全 ────────────────────────────────────────────
-  { module: 'settings', code: 'set_users', name: '人员与角色', route: '/settings', description: '员工档案、律师档案与 4 类角色管理。', titles: ['新入职律师账号配置', '角色职责说明更新'] },
-  { module: 'settings', code: 'set_permissions', name: '角色权限', route: '/settings?tab=permissions', description: '角色权限矩阵与案件级可见范围，配置持久化。', titles: ['账单审批权限矩阵调整', '案件团队可见范围配置'] },
-  { module: 'settings', code: 'set_categories', name: '案件类型', route: '/settings?tab=categories', description: '维护案件类型（对应案件业务领域）及每类案件的阶段、停留时长与阶段任务流程，支持新增、编辑、停用与拖拽排序。', titles: ['合同纠纷分类流程调整', '知识产权分类模板复核'] },
-  { module: 'settings', code: 'security_auth', name: '安全与合规', route: '/workspace/security_auth', description: '认证加密、合规框架、账户安全与数据治理。', titles: ['双因素认证策略配置', '年度合规自评记录'] },
-  { module: 'settings', code: 'security_access', name: '访问控制', route: '/workspace/security_access', description: '角色权限与案件数据可见范围配置。', titles: ['案件组访问权限矩阵', '外部协作者访问期限'] },
-  { module: 'settings', code: 'security_ai_policy', name: 'AI数据政策', route: '/workspace/security_ai_policy', description: 'AI 输入数据脱敏与客户信息禁止外传规则。', titles: ['AI 输入数据脱敏规则', '禁止上传资料清单'] },
-  { module: 'settings', code: 'report_audit', name: '审计追溯', route: '/workspace/report_audit', description: '关键操作日志与数据导出记录，支持追溯核查。', titles: ['账单修改审计日志核查', '数据导出记录追溯'] },
+  { module: 'settings', code: 'set_users', name: '人员与角色', route: '/settings/users', description: '员工档案、律师档案与 4 类角色管理。', titles: ['新入职律师账号配置', '角色职责说明更新'] },
+  { module: 'settings', code: 'set_permissions', name: '角色权限', route: '/settings/permissions', description: '角色权限矩阵与案件级可见范围，配置持久化。', titles: ['账单审批权限矩阵调整', '案件团队可见范围配置'] },
+  { module: 'settings', code: 'set_categories', name: '案件类型', route: '/settings/categories', description: '维护案件类型（对应案件业务领域）及每类案件的阶段、停留时长与阶段任务流程，支持新增、编辑、停用与拖拽排序。', titles: ['合同纠纷分类流程调整', '知识产权分类模板复核'] },
+  { module: 'settings', code: 'security_auth', name: '安全与合规', route: '/settings/security-auth', description: '认证加密、合规框架、账户安全与数据治理。', titles: ['双因素认证策略配置', '年度合规自评记录'] },
+  { module: 'settings', code: 'security_access', name: '访问控制', route: '/settings/access-control', description: '角色权限与案件数据可见范围配置。', titles: ['案件组访问权限矩阵', '外部协作者访问期限'] },
+  { module: 'settings', code: 'security_ai_policy', name: 'AI数据政策', route: '/settings/ai-policy', description: 'AI 输入数据脱敏与客户信息禁止外传规则。', titles: ['AI 输入数据脱敏规则', '禁止上传资料清单'] },
+  { module: 'settings', code: 'report_audit', name: '审计追溯', route: '/settings/audit', description: '关键操作日志与数据导出记录，支持追溯核查。', titles: ['账单修改审计日志核查', '数据导出记录追溯'] },
 
   // ── M8 沟通中心 ──────────────────────────────────────────────
   { module: 'communication', code: 'comm_inbox', name: '统一收件箱', route: '/communications', description: '微信、邮件、短信、门户消息聚合归档，模板、AI 起草与内部备注严格隔离。', titles: ['客户邮件往来归档', '案件沟通记录汇总'] },
@@ -711,9 +711,14 @@ const FEATURES: FeatureSeed[] = [
   { module: 'other', code: 'integration_bank', name: '银行同步', route: '/workspace/integration_bank', description: '银行与信用卡流水同步配置。', titles: ['银行账户同步配置', '信用卡支出导入测试'] },
 ];
 
-/** 真实业务页面无需通用功能记录；仅 /workspace 工作台功能生成演示记录。 */
+/** 设置模块的 4 项专用页面使用 /settings/* 路由，但数据仍由 /api/workspace 承载。 */
+const SETTINGS_WORKSPACE_CODES = new Set([
+  'security_auth', 'security_access', 'security_ai_policy', 'report_audit',
+]);
+
+/** 真实业务页面无需通用功能记录；仅工作台驱动的功能生成演示记录。 */
 const NON_WORKSPACE_FEATURE_CODES = FEATURES.filter(
-  (feature) => !feature.route.startsWith('/workspace/'),
+  (feature) => !feature.route.startsWith('/workspace/') && !SETTINGS_WORKSPACE_CODES.has(feature.code),
 ).map((feature) => feature.code);
 
 @Injectable()

@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { AssistantPage } from '@/pages/matters/AssistantPage';
 import { BillingPage } from '@/pages/finance/BillingPage';
@@ -32,7 +32,13 @@ import { LeadsPage } from '@/pages/acquire/LeadsPage';
 import { MatterDetailPage } from '@/pages/matters/MatterDetailPage';
 import { MattersPage } from '@/pages/matters/MattersPage';
 import { ReportsPage } from '@/pages/dashboard/ReportsPage';
-import { SettingsPage } from '@/pages/settings/SettingsPage';
+import { SettingsUsersPage } from '@/pages/settings/SettingsUsersPage';
+import { SettingsPermissionsPage } from '@/pages/settings/SettingsPermissionsPage';
+import { SettingsCategoriesPage } from '@/pages/settings/SettingsCategoriesPage';
+import { SecurityAuthPage } from '@/pages/settings/SecurityAuthPage';
+import { SecurityAccessPage } from '@/pages/settings/SecurityAccessPage';
+import { AiPolicyPage } from '@/pages/settings/AiPolicyPage';
+import { AuditTrailPage } from '@/pages/settings/AuditTrailPage';
 import { StatutesPage } from '@/pages/matters/StatutesPage';
 import { SyncPage } from '@/pages/matters/SyncPage';
 import { TasksPage } from '@/pages/matters/TasksPage';
@@ -68,11 +74,30 @@ const WORKSPACE_CODES = [
   'grow_conflict', 'grow_appointment', 'grow_engagement', 'comm_client_portal',
   'draft_esign',
   'billing_rates', 'billing_ar', 'payment_online', 'reconciliation', 'general_ledger',
-  'security_auth', 'security_access', 'security_ai_policy', 'report_audit',
   'comm_phone_meeting', 'comm_auto_followup',
   'grow_marketing', 'manage_mobile_access', 'draft_word', 'auto_workflow', 'auto_task',
   'auto_billing', 'integration_email_calendar', 'integration_practice', 'integration_bank',
 ] as const;
+
+/** 设置模块的 4 项已从通用 /workspace 页面迁出，旧链接重定向到对应的独立设置页。 */
+const LEGACY_SETTINGS_ROUTES: Record<string, string> = {
+  '/workspace/security_auth': '/settings/security-auth',
+  '/workspace/security_access': '/settings/access-control',
+  '/workspace/security_ai_policy': '/settings/ai-policy',
+  '/workspace/report_audit': '/settings/audit',
+};
+
+/** /settings 与旧的 ?tab= 深链接统一重定向到对应的独立设置页。 */
+function SettingsHome() {
+  const [params] = useSearchParams();
+  const tab = params.get('tab');
+  const to = tab === 'permissions'
+    ? '/settings/permissions'
+    : tab === 'categories'
+      ? '/settings/categories'
+      : '/settings/users';
+  return <Navigate to={to} replace />;
+}
 
 export default function App() {
   return (
@@ -111,7 +136,17 @@ export default function App() {
         <Route path="/trust" element={<TrustPage />} />
         <Route path="/communications" element={<CommunicationsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings" element={<SettingsHome />} />
+        <Route path="/settings/users" element={<SettingsUsersPage />} />
+        <Route path="/settings/permissions" element={<SettingsPermissionsPage />} />
+        <Route path="/settings/categories" element={<SettingsCategoriesPage />} />
+        <Route path="/settings/security-auth" element={<SecurityAuthPage />} />
+        <Route path="/settings/access-control" element={<SecurityAccessPage />} />
+        <Route path="/settings/ai-policy" element={<AiPolicyPage />} />
+        <Route path="/settings/audit" element={<AuditTrailPage />} />
+        {Object.entries(LEGACY_SETTINGS_ROUTES).map(([from, to]) => (
+          <Route key={from} path={from} element={<Navigate to={to} replace />} />
+        ))}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

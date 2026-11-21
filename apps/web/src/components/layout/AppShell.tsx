@@ -491,7 +491,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </MenuItem>
         <Divider />
         <MenuItem onClick={() => { navigate('/calendar'); setProfileAnchor(null); }}><CalendarMonthOutlined fontSize="small" sx={{ mr: 1.5 }} />我的待办</MenuItem>
-        <MenuItem onClick={() => { navigate('/settings'); setProfileAnchor(null); }}><SettingsOutlined fontSize="small" sx={{ mr: 1.5 }} />系统设置</MenuItem>
+        <MenuItem onClick={() => { navigate('/settings/users'); setProfileAnchor(null); }}><SettingsOutlined fontSize="small" sx={{ mr: 1.5 }} />系统设置</MenuItem>
       </Menu>
 
       <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} sx={{ display: { md: 'none' } }} PaperProps={{ sx: { width: 280 } }}>

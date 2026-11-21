@@ -8,13 +8,14 @@
 按照当日时间列出已完成的事项。
 
 ## 2026-11-21
+- 设置安全模块 7 个二级功能全部改为独立专用页面与独立路由：`/settings/users`、`/settings/permissions`、`/settings/categories`、`/settings/security-auth`、`/settings/access-control`、`/settings/ai-policy`、`/settings/audit`；原单页 Tabs 与「案件阶段」只读页签移除，`/settings` 及旧 `?tab=` 深链接重定向到对应独立页。安全与合规、访问控制、AI数据政策、审计追溯不再复用通用 `/workspace/*` 页面，改由设置专用页面承载，数据仍通过 `/api/workspace` 持久化；功能总数保持 9 模块 / 62 功能不变。同步更新后端功能目录 route、左侧二级导航高亮、用户菜单入口与文档。
 - 将设置页「案例分类」升级为「案件类型」完整流程配置：每个类型独立维护有序阶段，阶段支持名称、停留天数、颜色、结案标记；每个阶段支持有序任务，任务支持名称、进入阶段后第几天到期、是否可跳过。阶段与任务均使用已有 dnd-kit 实现拖拽排序，提供新增/删除、系统模板重建与脏数据拦截，配置保存通过后端 DTO 校验（停留天数 ≥1、到期天数 ≥0）与 JSON 顺序持久化。
 - 后端 `MatterCategoryStage` 增加 `durationDays` 与 `tasks`，种子为 10 个默认案件类型补齐阶段停留时长与示例任务，并对旧库增量升级而不覆盖用户配置；新建案件时按业务领域匹配启用的案件类型，将首个阶段任务实例化为案件任务（带模板来源标记），仅影响之后新建的案件。设置页页签、功能目录名称与提示文案同步为「案件类型」；全量 typecheck 与生产构建通过。
 
 ## 2026-11-20
 - 参照 Lex Passage `/activities/calendar` 的活动日历，在工作台模块新增「日程」二级功能（`/schedule`，功能编码 `dash_schedule`）：日/周/月/列表四种视图，时间格按 30 分钟快速新建，全天单独泳道， 重叠日程并排展示；支持按日历、类型、负责人、时间范围、状态与关键词筛选，日程详情可完成、编辑、记工时与删除；顶部「快速新建」增加「新日程」入口。后端功能目录种子同步新增该功能，已有演示库启动时自动补齐。
-- 参照 Lex Passage `/settings/matter-flows`（Matter types · Flows），在设置页新增「案例分类」页签（`/settings?tab=categories`，功能编码 `set_categories`）：以分类列表 + 详情的形式维护案件分类（与案件业务领域对应），支持新建/编辑/停用/删除分类、按分类查看关联案件数；每个分类带独立的办理阶段流程模板，可调整阶段顺序、名称、颜色、成交概率与结案阶段，也可用系统预置阶段一键重建。阶段模板只作用于之后新建的案件，已有案件与业务领域不受影响。
-- 新增后端 `MatterCategory` 实体与 `matter_categories` 表（`simple-json` 保存阶段模板）、`MatterCategoriesModule` 及 `/api/matter-categories` CRUD（含 DTO 校验）；种子按 code 增量写入 10 个默认分类，用户编辑过的流程不会被覆盖。前端补齐 types/API/hooks 类型链与 `MatterCategoriesPanel`，设置页新增「案例分类」页签并支持 URL 直达；全量 typecheck 与生产构建通过，功能目录升级为 9 模块 / 62 功能，10 个分类已补齐到演示库。
+- 参照 Lex Passage `/settings/matter-flows`（Matter types · Flows），在设置页新增「案例分类」功能（现为独立页 `/settings/categories`，功能编码 `set_categories`）：以分类列表 + 详情的形式维护案件分类（与案件业务领域对应），支持新建/编辑/停用/删除分类、按分类查看关联案件数；每个分类带独立的办理阶段流程模板，可调整阶段顺序、名称、颜色、成交概率与结案阶段，也可用系统预置阶段一键重建。阶段模板只作用于之后新建的案件，已有案件与业务领域不受影响。
+- 新增后端 `MatterCategory` 实体与 `matter_categories` 表（`simple-json` 保存阶段模板）、`MatterCategoriesModule` 及 `/api/matter-categories` CRUD（含 DTO 校验）；种子按 code 增量写入 10 个默认分类，用户编辑过的流程不会被覆盖。前端补齐 types/API/hooks 类型链与 `MatterCategoriesPanel`，设置页新增「案例分类」入口并支持 URL 直达；全量 typecheck 与生产构建通过，功能目录升级为 9 模块 / 62 功能，10 个分类已补齐到演示库。
 
 ## 2026-11-18
 - 后端使用 NestJS + TypeORM 框架，数据库使用 SQLite（better-sqlite3），实现销售流程、交易、联系人、公司、活动及统计接口，并带首次启动演示数据。
@@ -42,7 +43,7 @@
 - 设置页新增「角色权限」矩阵（M6）：新增 RolePermission 实体与 `/api/permissions` CRUD，种子写入 5 角色 × 8 项权限；账单审批与沟通内部备注接入角色校验，非法角色返回 403。
 - 报表页新增 5 张核心报表（M1）：后端 `/api/dashboard/core-reports` 提供收入、应收（账龄）、工时（本周/本月、可计费/不可计费）、案件（领域/主办律师）、客户（新增与收入贡献）数据，前端以独立页签展示。
 - 全量 typecheck、生产构建通过；重置演示库后 12/82 功能目录、页面路由、核心 API、M7 与跨模块写入路径冒烟回归通过。
-- 参照 `doc/Law-Firm-OS-5-10-People-Complete-With-Communication.md` 重组整个 LexDesk：一级功能由 12 个合并精简为 **7 个业务模块 + 其他**（工作台、获客客户、案件中心、法律AI、计费财务、设置安全、沟通中心、其他，共 8 个一级模块 / 54 个二级功能）。重写后端功能目录种子与工作台定义（32 个），默认页改为全新独立设计的「我的工作台」（案件阶段泳道看板，可拖拽更新阶段，已归档泳道仅显示最近 10 条，不复用案件中心的看板组件），经营仪表盘移到 `/dashboard` 独立入口，未知路径回退工作台，AppShell 一级菜单图标映射、模块首页与深链接解析全部按新结构更新，设置页支持 `/settings?tab=permissions` 直达角色权限矩阵。
+- 参照 `doc/Law-Firm-OS-5-10-People-Complete-With-Communication.md` 重组整个 LexDesk：一级功能由 12 个合并精简为 **7 个业务模块 + 其他**（工作台、获客客户、案件中心、法律AI、计费财务、设置安全、沟通中心、其他，共 8 个一级模块 / 54 个二级功能）。重写后端功能目录种子与工作台定义（32 个），默认页改为全新独立设计的「我的工作台」（案件阶段泳道看板，可拖拽更新阶段，已归档泳道仅显示最近 10 条，不复用案件中心的看板组件），经营仪表盘移到 `/dashboard` 独立入口，未知路径回退工作台，AppShell 一级菜单图标映射、模块首页与深链接解析全部按新结构更新，设置页支持 `/settings/permissions` 直达角色权限矩阵。
 - 同步重构物理目录：后端 20 个扁平领域模块归入 7 个分组目录（dashboard / acquisition / cases / communication / finance / settings / platform），前端 23 个页面归入 7 个模块目录（dashboard / acquire / matters / communication / finance / settings / workspace），全量修正模块间 import 与路径引用。
 - 更新 README 目录结构与功能模块说明；重置演示库后全量 typecheck、生产构建通过，导航、全量功能、工作台、日历、M7、集成、权限范围、律所核心共 8 套冒烟全部通过。
 - 修复工作台页面「功能目录中未找到该编码」警告：将 32 个 `/workspace` 功能的 `feature.code` 与其路由编码、工作台定义编码统一（如 `acq_conflict` → `grow_conflict`），避免 `WorkspacePage` 按路由编码查功能目录时匹配失败；同步更新导航冒烟用例，重置演示库后 7 套冒烟复测全部通过。
