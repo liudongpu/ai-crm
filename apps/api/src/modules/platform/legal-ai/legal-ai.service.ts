@@ -777,7 +777,7 @@ export class LegalAiService {
           matterTitle: t.matter?.title ?? null,
           score,
           reason: reasons.join(' · '),
-          route: ['deadline', 'hearing', 'court'].includes(t.type) ? '/calendar/deadlines' : '/tasks',
+          route: ['deadline', 'hearing', 'court'].includes(t.type) ? '/tools/deadline' : '/tasks',
         };
       })
       .sort((a, b) => b.score - a.score || (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'))
@@ -808,7 +808,7 @@ export class LegalAiService {
     if (unreplied.length) risks.push({ type: 'communication', level: 'high', label: `${unreplied.length} 条客户消息超过 24 小时未回复`, detail: unreplied[0].content.slice(0, 80), count: unreplied.length, route: '/communications' });
     if (followUp.length) risks.push({ type: 'communication', level: 'medium', label: `${followUp.length} 条沟通标记需跟进`, detail: '查看沟通中心需跟进会话，逐条确认处理', count: followUp.length, route: '/communications?followUp=true' });
     if (overdueInvoices.length) risks.push({ type: 'billing', level: 'high', label: `${overdueInvoices.length} 张账单已逾期`, detail: `逾期应收合计 ${sum(overdueInvoices.map((i) => Math.max(0, i.total - i.paidAmount))).toLocaleString('zh-CN')} 元`, count: overdueInvoices.length, route: '/billing?tab=invoices' });
-    if (upcomingDeadlines.length) risks.push({ type: 'deadline', level: 'high', label: `${upcomingDeadlines.length} 项期限/庭审在未来 7 天内到期`, detail: upcomingDeadlines.slice(0, 3).map((t) => t.title).join('；'), count: upcomingDeadlines.length, route: '/calendar/deadlines' });
+    if (upcomingDeadlines.length) risks.push({ type: 'deadline', level: 'high', label: `${upcomingDeadlines.length} 项期限/庭审在未来 7 天内到期`, detail: upcomingDeadlines.slice(0, 3).map((t) => t.title).join('；'), count: upcomingDeadlines.length, route: '/tools/deadline' });
     if (inactiveClients.length) risks.push({ type: 'client', level: 'medium', label: `${inactiveClients.length} 位活跃客户近 60 天无对外沟通`, detail: inactiveClients.slice(0, 3).map((c) => c.name).join('、'), count: inactiveClients.length, route: '/clients' });
     if (unbilled.length) risks.push({ type: 'billing', level: 'low', label: `${sum(unbilled.map((t) => t.hours)).toFixed(1)} 小时可计费工时尚未开票`, detail: '及时核对并开票，避免漏计应收', count: unbilled.length, route: '/billing?tab=time' });
 

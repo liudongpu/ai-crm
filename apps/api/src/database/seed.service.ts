@@ -613,7 +613,7 @@ const FEATURE_MODULES: Array<{ code: string; name: string; description: string }
   { code: 'acquire', name: '获客客户', description: '线索 → 冲突审查 → 咨询 → 签约 → 客户与案件，不污染案件数据。' },
   { code: 'matters', name: '案件中心', description: '打开案件就能办案：当事人团队、任务、期限、日历、文档与电子签名。' },
   { code: 'legal_ai', name: '法律AI', description: '卷宗智能解析、文书起草审查、合同风控、法规类案检索与行政事务助手；基于本地规则与真实业务数据生成草稿，均需人工核对。' },
-  { code: 'legal_toolbox', name: '律师工具箱', description: '诉讼执行费用、利息与赔偿测算、诉讼期限推算、证据文档处理与企业工商失信速查；计算结果可一键结构化保存至当前案件。' },
+  { code: 'legal_toolbox', name: '律师工具箱', description: '诉讼执行费用、利息与赔偿测算、诉讼期限推算（含法院规则期限链与节假日维护）、证据文档处理与企业工商失信速查；计算结果可一键结构化保存至当前案件。' },
   { code: 'finance', name: '计费财务', description: '工时 → 费用 → 账单 → 审批 → 发送 → 收款的闭环，含信托与总账对账。' },
   { code: 'settings', name: '设置安全', description: '人员、角色权限、安全合规、数据政策与审计追溯。' },
   { code: 'communication', name: '沟通中心', description: '一个收件箱聚合多渠道沟通，自动归档到案件，模板与 AI 起草需人工确认。' },
@@ -650,7 +650,6 @@ const FEATURES: FeatureSeed[] = [
   { module: 'matters', code: 'mat_cases', name: '案件档案', route: '/matters', description: '案件立卷、当事人与团队、活动时间线及案卷归档。', titles: ['货款纠纷案卷材料清单', '医疗纠纷案件时间轴梳理'] },
   { module: 'matters', code: 'mat_tasks', name: '任务与流程', route: '/tasks', description: '任务分派、进度、截止日期与办案流程模板，一键生成任务。', titles: ['证据交换任务分派', '商事诉讼流程模板启用'] },
   { module: 'matters', code: 'mat_calendar', name: '日历管理', route: '/calendar', description: '按案件组织日历事件，维护可见性与提醒。', titles: ['下周庭审日历排期', '团队共享日历订阅'] },
-  { module: 'matters', code: 'mat_deadlines', name: '截止日期计算', route: '/calendar/deadlines', description: '按法院规则生成期限链，支持重算与节假日顺延。', titles: ['上诉期限自动计算规则', '举证期限计算结果复核'] },
   { module: 'matters', code: 'mat_statute', name: '时效管理', route: '/calendar/statutes', description: '诉讼时效台账与到期预警。', titles: ['著作权维权时效预警', '应收账款诉讼时效台账'] },
   { module: 'matters', code: 'mat_calendar_ai', name: 'AI日历辅助', route: '/calendar/assistant', description: '从通知文本识别日期，生成待人工确认的日程草稿。', titles: ['会议纪要日程提取记录', '期限提醒文案生成记录'] },
   { module: 'matters', code: 'mat_sync', name: '同步与提醒', route: '/calendar/sync', description: 'ICS 日历导入导出与提醒队列。', titles: ['日历文件导入导出记录', '开庭前三天提醒规则'] },
@@ -670,7 +669,7 @@ const FEATURES: FeatureSeed[] = [
   { module: 'legal_toolbox', code: 'tool_fee', name: '诉讼执行计算器', route: '/tools/litigation-fee', description: '诉讼费、保全费、仲裁费分段精确计算，支持各地标准与减半规则；一键保存结果至当前案件。', titles: ['货款纠纷诉讼费测算', '财产保全费与仲裁费估算'] },
   { module: 'legal_toolbox', code: 'tool_interest', name: '利息测算器', route: '/tools/interest', description: '迟延履行期间加倍部分债务利息与 LPR 分段计息（单利/按年/按月复利），一键保存结果至当前案件。', titles: ['货款本金迟延履行利息测算', 'LPR 分段复利计算记录'] },
   { module: 'legal_toolbox', code: 'tool_compensation', name: '赔偿测算器', route: '/tools/compensation', description: '人身损害赔偿、工伤赔偿（含工亡）与劳动经济补偿金 N/N+1/2N 测算，一键保存结果至当前案件。', titles: ['人身损害赔偿项目测算', '违法解除 2N 赔偿金测算'] },
-  { module: 'legal_toolbox', code: 'tool_deadline', name: '诉讼期限推算器', route: '/tools/deadline', description: '上诉期、举证期、答辩期、申请执行期推算，自动排除周末与法院法定节假日后顺延。', titles: ['一审判决上诉期截止日推算', '举证期限节假日顺延计算'] },
+  { module: 'legal_toolbox', code: 'tool_deadline', name: '诉讼期限推算器', route: '/tools/deadline', description: '快速推算上诉期、举证期、答辩期与申请执行期；按法院规则维护期限链、节假日并重算生成日程。', titles: ['一审判决上诉期截止日推算', '法院规则期限链与节假日顺延配置'] },
   { module: 'legal_toolbox', code: 'tool_evidence', name: '证据文档处理', route: '/tools/evidence', description: '敏感信息一键脱敏、证据目录与页码自动编排；OCR 双层 PDF 为本地演示登记，明确标注未真实识别。', titles: ['证据材料身份证号脱敏', '证据目录页码编排生成'] },
   { module: 'legal_toolbox', code: 'tool_company', name: '企业工商失信速查', route: '/tools/company', description: '本地演示主体库查询股权穿透、涉诉、被执行与限高信息，可导入客户或相对方档案；明确标注非实时数据。', titles: ['相对方企业失信信息速查', '客户股权穿透图核对'] },
 
@@ -710,6 +709,9 @@ const FEATURES: FeatureSeed[] = [
   { module: 'other', code: 'integration_practice', name: '执业领域应用', route: '/workspace/integration_practice', description: '执业领域工具与应用接入配置。', titles: ['知识产权工具配置', '合规审查插件启用'] },
   { module: 'other', code: 'integration_bank', name: '银行同步', route: '/workspace/integration_bank', description: '银行与信用卡流水同步配置。', titles: ['银行账户同步配置', '信用卡支出导入测试'] },
 ];
+
+/** 已合并到其他功能、旧库升级时需要清理的历史功能编码。 */
+const RETIRED_FEATURE_CODES = ['mat_deadlines'];
 
 /** 设置模块的 4 项专用页面使用 /settings/* 路由，但数据仍由 /api/workspace 承载。 */
 const SETTINGS_WORKSPACE_CODES = new Set([
@@ -1269,6 +1271,10 @@ export class SeedService {
       feature.enabled = true;
       await this.featureEntities.save(feature);
     }
+
+    // 已退役功能（如合并进工具箱的「截止日期计算」）在旧库中仍可能存在，需显式清理导航与记录。
+    await this.featureRecords.delete({ featureCode: In(RETIRED_FEATURE_CODES) });
+    await this.featureEntities.delete({ code: In(RETIRED_FEATURE_CODES) });
 
     await this.featureRecords.delete({ featureCode: In(NON_WORKSPACE_FEATURE_CODES) });
 

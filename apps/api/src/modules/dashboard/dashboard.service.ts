@@ -200,7 +200,7 @@ export class DashboardService {
               level: 'medium',
               label: `未来 7 天有 ${upcomingDeadlines} 项法定期限/庭审`,
               detail: '提前核对期限与庭审准备',
-              route: '/calendar/deadlines',
+              route: '/tools/deadline',
             }]
           : []),
         ...(overdueInvoices > 0

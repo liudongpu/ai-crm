@@ -12,7 +12,6 @@ import { ContactsPage } from '@/pages/acquire/ContactsPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { SchedulePage } from '@/pages/dashboard/SchedulePage';
 import { WorkbenchPage } from '@/pages/dashboard/WorkbenchPage';
-import { DeadlinesPage } from '@/pages/matters/DeadlinesPage';
 import { DocumentsPage } from '@/pages/matters/DocumentsPage';
 import { WorkspacePage } from '@/pages/workspace/WorkspacePage';
 import { CaseAnalysisPage } from '@/pages/workspace/legal-ai/CaseAnalysisPage';
@@ -116,7 +115,6 @@ export default function App() {
         <Route path="/contacts/:id" element={<ContactDetailPage />} />
         <Route path="/leads" element={<LeadsPage />} />
         <Route path="/leads/:id" element={<LeadDetailPage />} />
-        <Route path="/calendar/deadlines" element={<DeadlinesPage />} />
         <Route path="/calendar/statutes" element={<StatutesPage />} />
         <Route path="/calendar/assistant" element={<AssistantPage />} />
         <Route path="/calendar/sync" element={<SyncPage />} />
@@ -147,6 +145,8 @@ export default function App() {
         {Object.entries(LEGACY_SETTINGS_ROUTES).map(([from, to]) => (
           <Route key={from} path={from} element={<Navigate to={to} replace />} />
         ))}
+        {/* 原案件中心「截止日期计算」已合并进工具箱「诉讼期限推算器」 */}
+        <Route path="/calendar/deadlines" element={<Navigate to="/tools/deadline" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

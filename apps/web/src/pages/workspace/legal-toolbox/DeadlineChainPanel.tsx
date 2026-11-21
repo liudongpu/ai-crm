@@ -31,7 +31,6 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { format } from 'date-fns';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { PageHeader } from '@/components/common/PageHeader';
 import { EmptyState, ErrorState, LoadingPanel } from '@/components/common/States';
 import { useToast } from '@/components/common/ToastProvider';
 import {
@@ -68,7 +67,11 @@ const defaultSteps: CourtRuleStep[] = [
   { code: 'appeal', label: '上诉期', offsetDays: 10, base: 'reply', businessDays: true },
 ];
 
-export function DeadlinesPage() {
+/**
+ * 期限链管理：法院规则与节假日维护、期限链生成/重算、状态流转与一键生成日程。
+ * 由律师工具箱「诉讼期限推算器」的「期限链管理」页签承载，数据仍走 /api/calendar/deadlines。
+ */
+export function DeadlineChainPanel() {
   const toast = useToast();
   const [status, setStatus] = useState('all');
   const [createMatterId, setCreateMatterId] = useState('');
@@ -287,16 +290,15 @@ export function DeadlinesPage() {
 
   return (
     <Box>
-      <PageHeader
-        title="期限计算"
-        subtitle="按法院规则生成期限链，修改触发日期后重算，并自动跳过周末与法院假期"
-        actions={
-          <Stack direction="row" spacing={1}>
-            <Button variant="outlined" onClick={() => setRuleDialog(true)}>规则管理</Button>
-            <Button variant="outlined" onClick={() => setHolidayDialog(true)}>节假日管理</Button>
-          </Stack>
-        }
-      />
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+        <Typography variant="body2" color="text.secondary">
+          按法院规则生成期限链，修改触发日期后重算，自动跳过周末与法院假期，并可一键生成日程。
+        </Typography>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" size="small" onClick={() => setRuleDialog(true)}>规则管理</Button>
+          <Button variant="outlined" size="small" onClick={() => setHolidayDialog(true)}>节假日管理</Button>
+        </Stack>
+      </Stack>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '340px minmax(0, 1fr)' }, gap: 2, alignItems: 'start' }}>
         <Card>
@@ -455,7 +457,7 @@ export function DeadlinesPage() {
             label="日期 *"
             type="date"
             value={holidayForm.date}
-            onChange={(event) => setHolidayForm({ ...holidayForm, date: event.target.value })}
+            onChange={(event) => setHolidayForm({ date: event.target.value, name: holidayForm.name })}
             slotProps={{ inputLabel: { shrink: true } }}
             fullWidth
           />

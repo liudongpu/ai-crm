@@ -23,7 +23,7 @@ function matchesFeature(feature: Feature, pathname: string): boolean {
  *
  * Matching rules, in priority order:
  * 1. Exact base-path matches beat parent-path prefix matches, so
- *    `/calendar/deadlines` resolves to the deadline feature, not `/calendar`.
+ *    `/calendar/statutes` resolves to the statute feature, not `/calendar`.
  * 2. Query parameters in the feature route are compared with the current URL.
  *    This distinguishes features sharing a base path, e.g.
  *    `/billing?tab=invoices` vs `/billing?tab=invoices&new=1`.
