@@ -1316,19 +1316,25 @@ export class SeedService {
     for (const [index, item] of DEFAULT_MATTER_CATEGORIES.entries()) {
       const existing = await this.matterCategories.findOne({ where: { code: item.code } });
       if (existing) {
-        // 升级兼容：已有分类只补齐新字段，不覆盖用户已保存的名称、顺序与任务配置。
-        const normalized = (existing.stages ?? []).map((stage) => ({
-          name: stage.name ?? '未命名阶段',
-          color: stage.color ?? '#94a3b8',
-          probability: stage.probability ?? 0,
-          isFinal: Boolean(stage.isFinal),
-          durationDays: typeof stage.durationDays === 'number' ? stage.durationDays : 7,
-          tasks: (stage.tasks ?? []).map((task) => ({
-            name: task.name ?? '未命名任务',
-            dueDay: typeof task.dueDay === 'number' ? task.dueDay : 0,
-            skippable: Boolean(task.skippable),
-          })),
-        }));
+        // 升级兼容：旧流程缺少停留时长时按默认模板补齐时长与示例任务；
+        // 已升级的流程完全保留用户保存的名称、顺序与任务配置（包括清空的任务）。
+        const defaults = categoryFlow(item.stages);
+        const normalized = (existing.stages ?? []).map((stage, index) => {
+          const fallback = defaults[index] ?? defaults[defaults.length - 1];
+          const upgraded = typeof stage.durationDays === 'number';
+          return {
+            name: stage.name ?? fallback.name,
+            color: stage.color ?? fallback.color,
+            probability: stage.probability ?? fallback.probability,
+            isFinal: Boolean(stage.isFinal),
+            durationDays: upgraded ? stage.durationDays : fallback.durationDays,
+            tasks: (upgraded ? stage.tasks ?? [] : fallback.tasks).map((task) => ({
+              name: task.name ?? '未命名任务',
+              dueDay: typeof task.dueDay === 'number' ? task.dueDay : 0,
+              skippable: Boolean(task.skippable),
+            })),
+          };
+        });
         if (JSON.stringify(normalized) !== JSON.stringify(existing.stages ?? [])) {
           existing.stages = normalized;
           await this.matterCategories.save(existing);

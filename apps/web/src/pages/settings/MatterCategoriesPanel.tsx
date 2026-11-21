@@ -298,7 +298,6 @@ export function MatterCategoriesPanel() {
   const deleteCategory = useDeleteMatterCategory();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const [draft, setDraft] = useState<MatterCategoryInput | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -308,6 +307,7 @@ export function MatterCategoriesPanel() {
   const selected = categories.find((category) => category.id === selectedId) ?? categories[0] ?? null;
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
+  // 依赖分类对象本身：切换分类或 React Query 失效后重新拉取，都会把最新持久化结果同步回草稿。
   useEffect(() => {
     if (!selected) {
       setDraft(null);
@@ -315,7 +315,7 @@ export function MatterCategoriesPanel() {
     }
     setDraft(toInput(selected));
     setExpandedStages([0]);
-  }, [selected?.id, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   const dirty = useMemo(
     () => Boolean(selected && draft && JSON.stringify(draft) !== JSON.stringify(toInput(selected))),
@@ -461,10 +461,7 @@ export function MatterCategoriesPanel() {
 
   const save = () => {
     if (!selected || !draft || flowError) return;
-    updateCategory.mutate(
-      { id: selected.id, data: draft },
-      { onSuccess: () => { setReloadKey((value) => value + 1); void refetch(); } },
-    );
+    updateCategory.mutate({ id: selected.id, data: draft });
   };
 
   const submitCreate = () => {
@@ -489,7 +486,6 @@ export function MatterCategoriesPanel() {
         if (id) setSelectedId(id);
         setFormOpen(false);
         setForm(emptyForm);
-        setReloadKey((value) => value + 1);
       },
     });
   };
