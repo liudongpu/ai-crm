@@ -54,14 +54,25 @@ export interface MatterStage extends BaseRecord {
   isFinal: boolean;
 }
 
+export interface MatterStageTask {
+  name: string;
+  /** 进入阶段后第几天到期。 */
+  dueDay: number;
+  /** 是否允许跳过该任务。 */
+  skippable: boolean;
+}
+
 export interface MatterCategoryStage {
   name: string;
   color: string;
   probability: number;
   isFinal: boolean;
+  /** 该阶段预计停留天数。 */
+  durationDays: number;
+  tasks: MatterStageTask[];
 }
 
-/** 案例分类：与案件的 practiceArea 对应，并携带该分类的默认办理流程。 */
+/** 案件类型：与案件的 practiceArea 对应，并携带该类型的阶段与任务流程模板。 */
 export interface MatterCategory extends BaseRecord {
   code: string;
   name: string;

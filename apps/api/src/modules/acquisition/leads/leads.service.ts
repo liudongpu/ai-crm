@@ -3,7 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CrudService } from '../../../common/crud.service';
 import { ConvertLeadDto } from '../../../common/dto/special.dto';
-import { Client, Contact, Lead, Matter, MatterStage } from '../../../database/entities';
+import { Client, Contact, Lead, MatterStage } from '../../../database/entities';
+import { MattersService } from '../../cases/matters/matters.service';
 
 @Injectable()
 export class LeadsService extends CrudService<Lead> {
@@ -11,8 +12,8 @@ export class LeadsService extends CrudService<Lead> {
     @InjectRepository(Lead) repo: Repository<Lead>,
     @InjectRepository(Client) private readonly clients: Repository<Client>,
     @InjectRepository(Contact) private readonly contacts: Repository<Contact>,
-    @InjectRepository(Matter) private readonly matters: Repository<Matter>,
     @InjectRepository(MatterStage) private readonly stages: Repository<MatterStage>,
+    private readonly mattersService: MattersService,
   ) {
     super(repo);
   }
@@ -48,23 +49,21 @@ export class LeadsService extends CrudService<Lead> {
       }),
     );
 
-    const matter = await this.matters.save(
-      this.matters.create({
-        title: dto.title ?? `${client.name} · ${practiceArea}`,
-        caseNumber: undefined,
-        clientId: client.id,
-        stageId: stage.id,
-        practiceArea,
-        status: 'open',
-        priority: lead.rating === 'hot' ? 'high' : 'medium',
-        ownerId: lead.ownerId ?? undefined,
-        description: lead.description ?? undefined,
-        openDate: new Date(),
-        closeDate: undefined,
-        value: dto.value ?? 0,
-        position: 0,
-      }),
-    );
+    const matter = await this.mattersService.create({
+      title: dto.title ?? `${client.name} · ${practiceArea}`,
+      caseNumber: undefined,
+      clientId: client.id,
+      stageId: stage.id,
+      practiceArea,
+      status: 'open',
+      priority: lead.rating === 'hot' ? 'high' : 'medium',
+      ownerId: lead.ownerId ?? undefined,
+      description: lead.description ?? undefined,
+      openDate: new Date(),
+      closeDate: undefined,
+      value: dto.value ?? 0,
+      position: 0,
+    });
 
     lead.status = 'converted';
     lead.convertedAt = new Date();

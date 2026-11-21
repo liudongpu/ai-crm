@@ -117,13 +117,13 @@ export function SettingsPage() {
 
   return (
     <Box>
-      <PageHeader title="系统设置" subtitle="用户、角色权限、案件阶段与案例分类配置" />
+      <PageHeader title="系统设置" subtitle="用户、角色权限、案件阶段与案件类型流程配置" />
       <Card>
         <Tabs value={tab} onChange={(_, value: number) => changeTab(value)} sx={{ borderBottom: 1, borderColor: 'divider', px: 1 }}>
           <Tab label="用户与角色" />
           <Tab label="角色权限" />
           <Tab label="案件阶段" />
-          <Tab label="案例分类" />
+          <Tab label="案件类型" />
         </Tabs>
         <CardContent sx={{ p: 2 }}>
           {tab === 0 && (

@@ -1,11 +1,21 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
+/** 阶段内的任务：进入阶段后第几天到期，以及是否允许跳过。 */
+export type MatterStageTask = {
+  name: string;
+  dueDay: number;
+  skippable: boolean;
+};
+
 /** 案例分类的办理阶段（流程模板），按顺序展示。 */
 export type MatterCategoryStage = {
   name: string;
   color: string;
   probability: number;
   isFinal: boolean;
+  /** 该阶段预计停留天数。 */
+  durationDays: number;
+  tasks: MatterStageTask[];
 };
 
 /** 案件分类及其默认办理流程；分类名与案件的 practiceArea 对应。 */

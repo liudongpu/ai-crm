@@ -26,6 +26,7 @@ import {
   MatterParty,
   MatterStage,
   MatterCategory,
+  MatterCategoryStage,
   MatterTeamMember,
   MessageTemplate,
   Note,
@@ -64,13 +65,21 @@ const STAGES: Array<{
   { name: '已归档', color: '#22c55e', probability: 100, isFinal: true },
 ];
 
-const categoryFlow = (names: string[]) =>
-  names.map((name, index) => ({
-    name,
-    color: STAGES[index % STAGES.length].color,
-    probability: Math.round(((index + 1) / names.length) * 100),
-    isFinal: index === names.length - 1,
-  }));
+const categoryFlow = (names: string[]): MatterCategoryStage[] =>
+  names.map((name, index) => {
+    const durationDays = index === names.length - 1 ? 3 : 7 + index * 2;
+    return {
+      name,
+      color: STAGES[index % STAGES.length].color,
+      probability: Math.round(((index + 1) / names.length) * 100),
+      isFinal: index === names.length - 1,
+      durationDays,
+      tasks: [
+        { name: `${name}启动确认`, dueDay: 1, skippable: false },
+        { name: `${name}阶段复核`, dueDay: Math.max(2, Math.round(durationDays / 2)), skippable: true },
+      ],
+    };
+  });
 
 /** 案例分类（案件类型）及其默认流程模板，参照 Lex Passage「Matter types · Flows」。 */
 const DEFAULT_MATTER_CATEGORIES: Array<{
@@ -679,7 +688,7 @@ const FEATURES: FeatureSeed[] = [
   // ── M7 设置与安全 ────────────────────────────────────────────
   { module: 'settings', code: 'set_users', name: '人员与角色', route: '/settings', description: '员工档案、律师档案与 4 类角色管理。', titles: ['新入职律师账号配置', '角色职责说明更新'] },
   { module: 'settings', code: 'set_permissions', name: '角色权限', route: '/settings?tab=permissions', description: '角色权限矩阵与案件级可见范围，配置持久化。', titles: ['账单审批权限矩阵调整', '案件团队可见范围配置'] },
-  { module: 'settings', code: 'set_categories', name: '案例分类', route: '/settings?tab=categories', description: '维护案件分类（对应案件业务领域）及每类案件的默认办理流程，支持新增、编辑、停用与阶段模板调整。', titles: ['合同纠纷分类流程调整', '知识产权分类模板复核'] },
+  { module: 'settings', code: 'set_categories', name: '案件类型', route: '/settings?tab=categories', description: '维护案件类型（对应案件业务领域）及每类案件的阶段、停留时长与阶段任务流程，支持新增、编辑、停用与拖拽排序。', titles: ['合同纠纷分类流程调整', '知识产权分类模板复核'] },
   { module: 'settings', code: 'security_auth', name: '安全与合规', route: '/workspace/security_auth', description: '认证加密、合规框架、账户安全与数据治理。', titles: ['双因素认证策略配置', '年度合规自评记录'] },
   { module: 'settings', code: 'security_access', name: '访问控制', route: '/workspace/security_access', description: '角色权限与案件数据可见范围配置。', titles: ['案件组访问权限矩阵', '外部协作者访问期限'] },
   { module: 'settings', code: 'security_ai_policy', name: 'AI数据政策', route: '/workspace/security_ai_policy', description: 'AI 输入数据脱敏与客户信息禁止外传规则。', titles: ['AI 输入数据脱敏规则', '禁止上传资料清单'] },
@@ -1306,7 +1315,26 @@ export class SeedService {
     let created = 0;
     for (const [index, item] of DEFAULT_MATTER_CATEGORIES.entries()) {
       const existing = await this.matterCategories.findOne({ where: { code: item.code } });
-      if (existing) continue;
+      if (existing) {
+        // 升级兼容：已有分类只补齐新字段，不覆盖用户已保存的名称、顺序与任务配置。
+        const normalized = (existing.stages ?? []).map((stage) => ({
+          name: stage.name ?? '未命名阶段',
+          color: stage.color ?? '#94a3b8',
+          probability: stage.probability ?? 0,
+          isFinal: Boolean(stage.isFinal),
+          durationDays: typeof stage.durationDays === 'number' ? stage.durationDays : 7,
+          tasks: (stage.tasks ?? []).map((task) => ({
+            name: task.name ?? '未命名任务',
+            dueDay: typeof task.dueDay === 'number' ? task.dueDay : 0,
+            skippable: Boolean(task.skippable),
+          })),
+        }));
+        if (JSON.stringify(normalized) !== JSON.stringify(existing.stages ?? [])) {
+          existing.stages = normalized;
+          await this.matterCategories.save(existing);
+        }
+        continue;
+      }
       await this.matterCategories.save(
         this.matterCategories.create({
           code: item.code,

@@ -12,6 +12,20 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+export class MatterCategoryTaskDto {
+  @IsString()
+  @MaxLength(80)
+  name: string;
+
+  @IsInt()
+  @Min(0)
+  @Max(3650)
+  dueDay: number;
+
+  @IsBoolean()
+  skippable: boolean;
+}
+
 export class MatterCategoryStageDto {
   @IsString()
   @MaxLength(60)
@@ -29,6 +43,16 @@ export class MatterCategoryStageDto {
   @IsOptional()
   @IsBoolean()
   isFinal?: boolean;
+
+  @IsInt()
+  @Min(1)
+  @Max(3650)
+  durationDays: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MatterCategoryTaskDto)
+  tasks: MatterCategoryTaskDto[];
 }
 
 export class CreateMatterCategoryDto {

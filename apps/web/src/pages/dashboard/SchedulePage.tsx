@@ -407,7 +407,7 @@ export function SchedulePage() {
         })}
       </Box>
 
-      <Box sx={{ maxHeight: 540, overflowY: 'auto' }}>
+      <Box sx={view === 'week' ? undefined : { maxHeight: 540, overflowY: 'auto' }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))`, height: HOURS.length * HOUR_HEIGHT }}>
           <Box>
             {HOURS.map((hour) => (

@@ -78,7 +78,8 @@ export default function App() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<WorkbenchPage />} />
+        <Route path="/" element={<Navigate to="/schedule" replace />} />
+        <Route path="/workbench" element={<WorkbenchPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/matters" element={<MattersPage />} />

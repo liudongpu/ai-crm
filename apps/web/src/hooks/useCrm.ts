@@ -267,11 +267,11 @@ export const useContact = (id?: number) => useDetail(keys.contacts, id, () => ap
 export const useMatterStages = () => useList(keys.matterStages, () => api.matterStages.list());
 export const useMatterCategories = () => useList(keys.matterCategories, () => api.matterCategories.list());
 export const useCreateMatterCategory = () =>
-  useCreateMutation<MatterCategoryInput>(api.matterCategories.create, '案例分类已创建');
+  useCreateMutation<MatterCategoryInput>(api.matterCategories.create, '案件类型已创建');
 export const useUpdateMatterCategory = () =>
-  useUpdateMutation<MatterCategoryInput>((args) => api.matterCategories.update(args.id, args.data), '案例分类已更新');
+  useUpdateMutation<MatterCategoryInput>((args) => api.matterCategories.update(args.id, args.data), '案件类型已更新');
 export const useDeleteMatterCategory = () =>
-  useDeleteMutation(api.matterCategories.remove, '案例分类已删除');
+  useDeleteMutation(api.matterCategories.remove, '案件类型已删除');
 export const useMatters = (params: Params = {}) => useList(keys.matters, () => api.matters.list(params), params);
 export const useMatter = (id?: number) => useDetail(keys.matters, id, () => api.matters.get(id!));
 export const useMatterParties = (matterId: number) =>
