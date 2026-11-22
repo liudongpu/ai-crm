@@ -9,7 +9,6 @@ function normalizeStages(stages?: DeepPartial<MatterCategoryStage>[] | null): Ma
   if (!stages) return undefined;
   return stages.map((stage) => ({
     name: stage.name ?? '未命名阶段',
-    color: stage.color ?? '#94a3b8',
     probability: stage.probability ?? 0,
     isFinal: Boolean(stage.isFinal),
     durationDays: typeof stage.durationDays === 'number' && Number.isFinite(stage.durationDays) ? stage.durationDays : 7,
@@ -21,14 +20,24 @@ function normalizeStages(stages?: DeepPartial<MatterCategoryStage>[] | null): Ma
   }));
 }
 
+function stripLegacyColor(category: MatterCategory): MatterCategory {
+  return { ...category, stages: normalizeStages(category.stages) ?? [] };
+}
+
 @Injectable()
 export class MatterCategoriesService extends CrudService<MatterCategory> {
   constructor(@InjectRepository(MatterCategory) repo: Repository<MatterCategory>) {
     super(repo);
   }
 
-  findAll(): Promise<MatterCategory[]> {
-    return this.repo.find({ order: { position: 'ASC', id: 'ASC' } });
+  async findAll(): Promise<MatterCategory[]> {
+    const categories = await this.repo.find({ order: { position: 'ASC', id: 'ASC' } });
+    return categories.map(stripLegacyColor);
+  }
+
+  /** 旧库阶段 JSON 仍带已移除的 color 字段，读取时统一剔除。 */
+  async findOne(id: number): Promise<MatterCategory> {
+    return stripLegacyColor(await super.findOne(id));
   }
 
   async create(dto: DeepPartial<MatterCategory>): Promise<MatterCategory> {

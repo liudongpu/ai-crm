@@ -64,7 +64,6 @@ export interface MatterStageTask {
 
 export interface MatterCategoryStage {
   name: string;
-  color: string;
   probability: number;
   isFinal: boolean;
   /** 该阶段预计停留天数。 */
@@ -77,7 +76,6 @@ export interface MatterCategory extends BaseRecord {
   code: string;
   name: string;
   description?: string | null;
-  color: string;
   position: number;
   enabled: boolean;
   stages: MatterCategoryStage[];
@@ -87,7 +85,6 @@ export type MatterCategoryInput = {
   code: string;
   name: string;
   description?: string | null;
-  color?: string;
   enabled?: boolean;
   position?: number;
   stages: MatterCategoryStage[];

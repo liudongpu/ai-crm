@@ -48,15 +48,14 @@ import {
 } from '@/hooks/useCrm';
 import type { MatterCategory, MatterCategoryInput, MatterCategoryStage, MatterStageTask } from '@/types';
 
-type SystemStage = { name: string; color: string; probability: number; isFinal: boolean };
+type SystemStage = { name: string; probability: number; isFinal: boolean };
 
-const emptyForm = { name: '', code: '', color: '#1b365d', description: '', enabled: true };
+const emptyForm = { name: '', code: '', description: '', enabled: true };
 
 /** 兼容旧流程数据：补齐停留时长与阶段任务。 */
 function normalizeStage(stage: MatterCategoryStage): MatterCategoryStage {
   return {
     name: stage.name ?? '',
-    color: stage.color ?? '#94a3b8',
     probability: stage.probability ?? 0,
     isFinal: Boolean(stage.isFinal),
     durationDays: typeof stage.durationDays === 'number' && Number.isFinite(stage.durationDays) ? stage.durationDays : 7,
@@ -72,14 +71,15 @@ function normalizeStage(stage: MatterCategoryStage): MatterCategoryStage {
 
 const fromSystemStages = (stages: SystemStage[]): MatterCategoryStage[] =>
   stages.map((stage) => ({
-    ...stage,
+    name: stage.name,
+    probability: stage.probability,
+    isFinal: stage.isFinal,
     durationDays: 7,
     tasks: [{ name: `${stage.name}启动确认`, dueDay: 1, skippable: false }],
   }));
 
 const newStage = (isFinal = false): MatterCategoryStage => ({
   name: '新阶段',
-  color: '#94a3b8',
   probability: 0,
   isFinal,
   durationDays: 7,
@@ -92,7 +92,6 @@ const toInput = (category: MatterCategory): MatterCategoryInput => ({
   code: category.code,
   name: category.name,
   description: category.description ?? '',
-  color: category.color,
   enabled: category.enabled,
   position: category.position,
   stages: (category.stages ?? []).map(normalizeStage),
@@ -201,7 +200,7 @@ function StageEditor({
       style={{ transform: CSS.Transform.toString(transform), transition, position: 'relative', zIndex: isDragging ? 3 : undefined }}
       sx={{ p: 1.25, bgcolor: isDragging ? 'action.hover' : 'background.paper' }}
     >
-      <Box sx={{ display: 'grid', gridTemplateColumns: '28px minmax(140px, 1.4fr) 100px 56px 76px 28px 28px 28px', gap: 1, alignItems: 'center' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '28px minmax(140px, 1.4fr) 100px 76px 28px 28px 28px', gap: 1, alignItems: 'center' }}>
         <Tooltip title="拖动调整阶段顺序">
           <IconButton
             size="small"
@@ -228,14 +227,6 @@ function StageEditor({
           onChange={(event) => onPatch({ durationDays: Math.max(0, Number(event.target.value) || 0) })}
           inputProps={{ min: 0, 'aria-label': `阶段 ${index + 1} 停留天数` }}
           label="停留天数"
-        />
-        <TextField
-          size="small"
-          type="color"
-          value={stage.color}
-          onChange={(event) => onPatch({ color: event.target.value })}
-          sx={{ '& input': { p: 0.5, height: 30 } }}
-          inputProps={{ 'aria-label': `阶段 ${index + 1} 颜色` }}
         />
         <FormControlLabel
           control={<Switch size="small" checked={stage.isFinal} onChange={(event) => onFinalChange(event.target.checked)} />}
@@ -469,15 +460,14 @@ export function MatterCategoriesPanel() {
     const payload: MatterCategoryInput = {
       name: form.name.trim(),
       code: form.code.trim().toLowerCase().replace(/\s+/g, '-'),
-      color: form.color,
       description: form.description.trim(),
       enabled: form.enabled,
       stages: systemStages.length
         ? fromSystemStages(systemStages)
         : fromSystemStages([
-            { name: '咨询评估', color: '#94a3b8', probability: 10, isFinal: false },
-            { name: '办理中', color: '#3b82f6', probability: 60, isFinal: false },
-            { name: '已归档', color: '#22c55e', probability: 100, isFinal: true },
+            { name: '咨询评估', probability: 10, isFinal: false },
+            { name: '办理中', probability: 60, isFinal: false },
+            { name: '已归档', probability: 100, isFinal: true },
           ]),
     };
     createCategory.mutate(payload, {
@@ -533,7 +523,6 @@ export function MatterCategoriesPanel() {
                   onClick={() => select(category)}
                   sx={{ borderRadius: 0, '&.Mui-selected': { bgcolor: 'primary.light', color: 'primary.main' } }}
                 >
-                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: category.color, mr: 1.25, flexShrink: 0 }} />
                   <ListItemText
                     primary={category.name}
                     secondary={`${countOf(category)} 件案件 · ${category.stages.length} 个阶段`}
@@ -580,10 +569,9 @@ export function MatterCategoriesPanel() {
                   </Alert>
                 )}
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' }, gap: 2, mb: 2 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 2, mb: 2 }}>
                   <TextField label="类型名称" value={draft.name} onChange={(event) => patchDraft({ name: event.target.value })} fullWidth size="small" />
                   <TextField label="标识代码" value={draft.code} onChange={(event) => patchDraft({ code: event.target.value })} fullWidth size="small" helperText="英文标识，用于区分类型" />
-                  <TextField label="颜色" type="color" value={draft.color} onChange={(event) => patchDraft({ color: event.target.value })} fullWidth size="small" sx={{ '& input': { p: 0.5, height: 34 } }} />
                   <FormControlLabel control={<Switch size="small" checked={draft.enabled !== false} onChange={(event) => patchDraft({ enabled: event.target.checked })} />} label="启用该类型" sx={{ m: 0, alignSelf: 'center' }} />
                   <TextField
                     label="说明"
@@ -654,7 +642,6 @@ export function MatterCategoriesPanel() {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
           <TextField label="类型名称 *" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} autoFocus fullWidth />
           <TextField label="标识代码 *" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} fullWidth helperText="例如 contract / ip / labor" />
-          <TextField label="颜色" type="color" value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value })} fullWidth sx={{ '& input': { p: 0.5, height: 34 } }} />
           <TextField label="说明" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} fullWidth multiline minRows={2} />
           <FormControlLabel control={<Switch size="small" checked={form.enabled} onChange={(event) => setForm({ ...form, enabled: event.target.checked })} />} label="启用该类型" />
         </DialogContent>

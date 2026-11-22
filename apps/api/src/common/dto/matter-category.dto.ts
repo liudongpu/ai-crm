@@ -31,10 +31,6 @@ export class MatterCategoryStageDto {
   @MaxLength(60)
   name: string;
 
-  @IsString()
-  @MaxLength(20)
-  color: string;
-
   @IsInt()
   @Min(0)
   @Max(100)
@@ -68,11 +64,6 @@ export class CreateMatterCategoryDto {
   @IsString()
   @MaxLength(500)
   description?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  color?: string;
 
   @IsOptional()
   @IsBoolean()

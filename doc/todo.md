@@ -8,6 +8,7 @@
 按照当日时间列出已完成的事项。
 
 ## 2026-11-22
+- 去掉案件类型里的颜色：后端 `MatterCategory.color` 列与 `MatterCategoryStage.color` 字段、对应 DTO 校验与种子默认值全部删除；`findAll` 与种子升级逻辑对旧库阶段 JSON 中的遗留 `color` 统一剔除。前端案件类型设置页移除类型颜色选择器、列表色点与阶段颜色输入框，新建/编辑表单改为不接收颜色；案件看板使用的独立 `MatterStage.color` 不受影响。
 - 案件中心移除全部二级功能：功能目录仅保留「案件管理」（原「案件档案」改名，`mat_cases` 强制同步名称），删除 `mat_tasks`、`mat_calendar`、`mat_statute`、`mat_calendar_ai`、`mat_sync`、`mat_time_link`、`mat_documents`、`draft_esign` 8 项功能定义（功能总数 61→53）。前端 Sidebar 与移动端导航对工作台、案件中心统一隐藏二级功能列，点击一级模块分别直达 `/schedule` 与 `/matters`；已移除功能的原页面路由保留，`resolveNavigation` 将其归属案件中心以避免误高亮工作台。种子 `RETIRED_FEATURE_CODES` 扩展以清理旧库残留导航与记录，README 功能表与说明同步更新。
 
 ## 2026-11-21

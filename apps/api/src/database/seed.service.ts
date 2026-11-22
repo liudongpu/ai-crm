@@ -51,6 +51,7 @@ const USERS: Array<{ name: string; email: string; role: User['role']; title: str
   { name: '赵敏', email: 'zhao.min@lexdesk.cn', role: 'accountant', title: '财务经理' },
 ];
 
+/** 案件看板阶段（MatterStage），颜色仅用于看板，与案件类型流程配置无关。 */
 const STAGES: Array<{
   name: string;
   color: string;
@@ -70,7 +71,6 @@ const categoryFlow = (names: string[]): MatterCategoryStage[] =>
     const durationDays = index === names.length - 1 ? 3 : 7 + index * 2;
     return {
       name,
-      color: STAGES[index % STAGES.length].color,
       probability: Math.round(((index + 1) / names.length) * 100),
       isFinal: index === names.length - 1,
       durationDays,
@@ -85,20 +85,19 @@ const categoryFlow = (names: string[]): MatterCategoryStage[] =>
 const DEFAULT_MATTER_CATEGORIES: Array<{
   code: string;
   name: string;
-  color: string;
   description: string;
   stages: string[];
 }> = [
-  { code: 'contract', name: '合同纠纷', color: '#1b365d', description: '买卖、服务与各类合同履约争议', stages: ['咨询评估', '合同审阅', '证据收集', '谈判/庭审', '结案归档'] },
-  { code: 'labor', name: '劳动法律', color: '#3b82f6', description: '竞业限制、用工合规与劳动争议', stages: ['事实梳理', '制度审查', '证据收集', '仲裁/诉讼', '结案归档'] },
-  { code: 'merger', name: '并购重组', color: '#6366f1', description: '股权并购、资产重组与专项尽调', stages: ['立项评估', '尽职调查', '交易谈判', '协议签署', '交割归档'] },
-  { code: 'ip', name: '知识产权', color: '#8b5cf6', description: '著作权、商标、专利与许可维权', stages: ['权利核查', '侵权取证', '维权方案', '行政/诉讼', '结案归档'] },
-  { code: 'medical', name: '医疗纠纷', color: '#ec4899', description: '医疗损害责任与医患争议处理', stages: ['病历调取', '损害评估', '鉴定准备', '调解/庭审', '结案归档'] },
-  { code: 'commercial', name: '商事诉讼', color: '#f59e0b', description: '商事合同、运输与货款争议', stages: ['立案评估', '财产保全', '证据交换', '开庭审理', '执行归档'] },
-  { code: 'company', name: '公司法', color: '#2c6b8f', description: '股权转让、公司治理与股东争议', stages: ['诉求梳理', '章程审查', '证据收集', '谈判/诉讼', '结案归档'] },
-  { code: 'compliance', name: '合规审查', color: '#22c55e', description: '数据、金融与经营合规专项审查', stages: ['范围确认', '资料收集', '风险识别', '整改复核', '报告归档'] },
-  { code: 'family', name: '婚姻家庭', color: '#d97706', description: '婚姻财产、继承与家事争议', stages: ['初次面谈', '财产梳理', '调解准备', '庭审/调解', '结案归档'] },
-  { code: 'data', name: '数据合规', color: '#0ea5e9', description: '数据出境、隐私与个人信息保护', stages: ['需求确认', '数据盘点', '差距分析', '整改落地', '报告归档'] },
+  { code: 'contract', name: '合同纠纷', description: '买卖、服务与各类合同履约争议', stages: ['咨询评估', '合同审阅', '证据收集', '谈判/庭审', '结案归档'] },
+  { code: 'labor', name: '劳动法律', description: '竞业限制、用工合规与劳动争议', stages: ['事实梳理', '制度审查', '证据收集', '仲裁/诉讼', '结案归档'] },
+  { code: 'merger', name: '并购重组', description: '股权并购、资产重组与专项尽调', stages: ['立项评估', '尽职调查', '交易谈判', '协议签署', '交割归档'] },
+  { code: 'ip', name: '知识产权', description: '著作权、商标、专利与许可维权', stages: ['权利核查', '侵权取证', '维权方案', '行政/诉讼', '结案归档'] },
+  { code: 'medical', name: '医疗纠纷', description: '医疗损害责任与医患争议处理', stages: ['病历调取', '损害评估', '鉴定准备', '调解/庭审', '结案归档'] },
+  { code: 'commercial', name: '商事诉讼', description: '商事合同、运输与货款争议', stages: ['立案评估', '财产保全', '证据交换', '开庭审理', '执行归档'] },
+  { code: 'company', name: '公司法', description: '股权转让、公司治理与股东争议', stages: ['诉求梳理', '章程审查', '证据收集', '谈判/诉讼', '结案归档'] },
+  { code: 'compliance', name: '合规审查', description: '数据、金融与经营合规专项审查', stages: ['范围确认', '资料收集', '风险识别', '整改复核', '报告归档'] },
+  { code: 'family', name: '婚姻家庭', description: '婚姻财产、继承与家事争议', stages: ['初次面谈', '财产梳理', '调解准备', '庭审/调解', '结案归档'] },
+  { code: 'data', name: '数据合规', description: '数据出境、隐私与个人信息保护', stages: ['需求确认', '数据盘点', '差距分析', '整改落地', '报告归档'] },
 ];
 
 const CLIENTS: Array<{
@@ -1330,7 +1329,7 @@ export class SeedService {
     for (const [index, item] of DEFAULT_MATTER_CATEGORIES.entries()) {
       const existing = await this.matterCategories.findOne({ where: { code: item.code } });
       if (existing) {
-        // 升级兼容：旧流程缺少停留时长时按默认模板补齐时长与示例任务；
+        // 升级兼容：旧流程缺少停留时长时按默认模板补齐时长与示例任务，同时剔除已移除的颜色字段；
         // 已升级的流程完全保留用户保存的名称、顺序与任务配置（包括清空的任务）。
         const defaults = categoryFlow(item.stages);
         const normalized = (existing.stages ?? []).map((stage, index) => {
@@ -1338,7 +1337,6 @@ export class SeedService {
           const upgraded = typeof stage.durationDays === 'number';
           return {
             name: stage.name ?? fallback.name,
-            color: stage.color ?? fallback.color,
             probability: stage.probability ?? fallback.probability,
             isFinal: Boolean(stage.isFinal),
             durationDays: upgraded ? stage.durationDays : fallback.durationDays,
@@ -1360,7 +1358,6 @@ export class SeedService {
           code: item.code,
           name: item.name,
           description: item.description,
-          color: item.color,
           position: index,
           enabled: true,
           stages: categoryFlow(item.stages),
