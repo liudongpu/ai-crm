@@ -276,7 +276,6 @@ export function MattersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState<'list' | 'board'>('list');
   const [search, setSearch] = useState('');
-  const [stageId, setStageId] = useState<number | ''>('');
   const [status, setStatus] = useState<MatterStatus | ''>('');
   const [ownerId, setOwnerId] = useState<number | ''>('');
   const [formOpen, setFormOpen] = useState(false);
@@ -288,7 +287,6 @@ export function MattersPage() {
   const { data: users } = useUsers();
   const { data: matters, isLoading, isError, error, refetch } = useMatters({
     search: search || undefined,
-    stageId: stageId || undefined,
     status: status || undefined,
     ownerId: ownerId || undefined,
   });
@@ -353,13 +351,6 @@ export function MattersPage() {
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
           sx={{ width: 240 }}
         />
-        <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel id="filter-stage">阶段</InputLabel>
-          <Select labelId="filter-stage" label="阶段" value={stageId} onChange={(event) => setStageId(event.target.value as number | '')}>
-            <MenuItem value="">全部阶段</MenuItem>
-            {(stages ?? []).map((stage) => <MenuItem key={stage.id} value={stage.id}>{stage.name}</MenuItem>)}
-          </Select>
-        </FormControl>
         <FormControl size="small" sx={{ minWidth: 130 }}>
           <InputLabel id="filter-status">状态</InputLabel>
           <Select labelId="filter-status" label="状态" value={status} onChange={(event) => setStatus(event.target.value as MatterStatus | '')}>
@@ -374,7 +365,7 @@ export function MattersPage() {
             {(users ?? []).map((user) => <MenuItem key={user.id} value={user.id}>{user.name}</MenuItem>)}
           </Select>
         </FormControl>
-        <Button size="small" onClick={() => { setSearch(''); setStageId(''); setStatus(''); setOwnerId(''); }}>重置</Button>
+        <Button size="small" onClick={() => { setSearch(''); setStatus(''); setOwnerId(''); }}>重置</Button>
       </Paper>
 
       {isError && <ErrorState message={error?.message ?? '案件加载失败'} onRetry={() => void refetch()} />}
