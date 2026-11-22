@@ -161,7 +161,7 @@ const MATTERS: Array<{
   { title: '星海科技股权转让纠纷', caseNumber: '(2026)京0108民初2011号', client: 0, stage: 3, practiceArea: '公司法', status: 'open', priority: 'high', owner: 1, value: 2100000, openDaysAgo: 96 },
   { title: '集团数据合规审查', caseNumber: '(2026)沪01合审77号', client: 1, stage: 4, practiceArea: '合规审查', status: 'open', priority: 'medium', owner: 2, value: 360000, openDaysAgo: 140 },
   { title: '婚姻财产分割纠纷', caseNumber: '(2026)粤0305民初6612号', client: 4, stage: 4, practiceArea: '婚姻家庭', status: 'open', priority: 'medium', owner: 1, value: 780000, openDaysAgo: 132 },
-  { title: '遗产继承纠纷调解', caseNumber: '(2025)浙0110民初8820号', client: 5, stage: 5, practiceArea: '家事法律', status: 'won', priority: 'low', owner: 0, value: 420000, openDaysAgo: 320, closeDaysAgo: 26 },
+  { title: '遗产继承纠纷调解', caseNumber: '(2025)浙0110民初8820号', client: 5, stage: 5, practiceArea: '婚姻家庭', status: 'won', priority: 'low', owner: 0, value: 420000, openDaysAgo: 320, closeDaysAgo: 26 },
   { title: '商标异议复审案件', caseNumber: '(2025)粤0106行初118号', client: 3, stage: 5, practiceArea: '知识产权', status: 'lost', priority: 'low', owner: 2, value: 160000, openDaysAgo: 280, closeDaysAgo: 48 },
 ];
 
@@ -181,7 +181,7 @@ const LEADS: Array<{
   converted?: { client: number; contact: number; matter: number; daysAgo: number };
 }> = [
   { name: '张沐', company: '远景能源', email: 'zhang.mu@yuanjing.example.com', phone: '138 0000 1301', source: '网站', practiceArea: '公司法', description: '拟设立合资公司，需要股权架构设计与合同审查。', status: 'new', rating: 'hot', owner: 0 },
-  { name: '李文博', company: '汇通金服', email: 'li.wenbo@huitong.example.com', phone: '138 0000 1302', source: '转介绍', practiceArea: '金融合规', description: '需对信贷业务合作方案进行合规性审查。', status: 'contacted', rating: 'hot', conflictChecked: true, conflictResult: 'clear', owner: 1 },
+  { name: '李文博', company: '汇通金服', email: 'li.wenbo@huitong.example.com', phone: '138 0000 1302', source: '转介绍', practiceArea: '合规审查', description: '需对信贷业务合作方案进行合规性审查。', status: 'contacted', rating: 'hot', conflictChecked: true, conflictResult: 'clear', owner: 1 },
   { name: '方敏', company: '德昌制造', email: 'fang.min@dechang.example.com', phone: '138 0000 1306', source: '线下活动', practiceArea: '劳动法律', description: '工厂用工制度调整，咨询裁员补偿方案。', status: 'new', rating: 'cold', owner: 2 },
   { name: '苏晴', company: '星辰传媒', email: 'su.qing@xingchen.example.com', phone: '138 0000 1307', source: '广告', practiceArea: '知识产权', description: '发现品牌标识被抢注，希望提起异议。', status: 'qualified', rating: 'warm', conflictChecked: true, conflictResult: 'clear', owner: 0 },
   { name: '陈思远', company: '星海科技', email: 'chen.siyuan@xinghai.example.com', phone: '138 0000 1201', source: '老客户', practiceArea: '合同纠纷', description: '已有货款纠纷案件，追加专项法律顾问服务。', status: 'converted', rating: 'hot', conflictChecked: true, conflictResult: 'clear', owner: 0, converted: { client: 0, contact: 0, matter: 0, daysAgo: 12 } },
@@ -678,7 +678,7 @@ const FEATURES: FeatureSeed[] = [
   // ── M7 设置与安全 ────────────────────────────────────────────
   { module: 'settings', code: 'set_users', name: '人员与角色', route: '/settings/users', description: '员工档案、律师档案与 4 类角色管理。', titles: ['新入职律师账号配置', '角色职责说明更新'] },
   { module: 'settings', code: 'set_permissions', name: '角色权限', route: '/settings/permissions', description: '角色权限矩阵与案件级可见范围，配置持久化。', titles: ['账单审批权限矩阵调整', '案件团队可见范围配置'] },
-  { module: 'settings', code: 'set_categories', name: '案件类型', route: '/settings/categories', description: '维护案件类型（对应案件业务领域）及每类案件的阶段、停留时长与阶段任务流程，支持新增、编辑、停用与拖拽排序。', titles: ['合同纠纷分类流程调整', '知识产权分类模板复核'] },
+  { module: 'settings', code: 'set_categories', name: '案件类型', route: '/settings/categories', description: '维护新建案件与线索可选择的案件类型，以及每类案件的阶段、停留时长与阶段任务流程，支持新增、编辑、停用与拖拽排序。', titles: ['合同纠纷分类流程调整', '知识产权分类模板复核'] },
   { module: 'settings', code: 'security_auth', name: '安全与合规', route: '/settings/security-auth', description: '认证加密、合规框架、账户安全与数据治理。', titles: ['双因素认证策略配置', '年度合规自评记录'] },
   { module: 'settings', code: 'security_access', name: '访问控制', route: '/settings/access-control', description: '角色权限与案件数据可见范围配置。', titles: ['案件组访问权限矩阵', '外部协作者访问期限'] },
   { module: 'settings', code: 'security_ai_policy', name: 'AI数据政策', route: '/settings/ai-policy', description: 'AI 输入数据脱敏与客户信息禁止外传规则。', titles: ['AI 输入数据脱敏规则', '禁止上传资料清单'] },
@@ -697,7 +697,7 @@ const FEATURES: FeatureSeed[] = [
   { module: 'other', code: 'auto_task', name: '任务自动化', route: '/workspace/auto_task', description: '按事件与期限自动创建和触发任务。', titles: ['立案后任务自动生成', '期限临近任务触发规则'] },
   { module: 'other', code: 'auto_billing', name: '计费自动化', route: '/workspace/auto_billing', description: '按规则自动生成工时计费与账单。', titles: ['超时工时自动计费规则', '月度账单自动生成设置'] },
   { module: 'other', code: 'integration_email_calendar', name: '集成配置', route: '/workspace/integration_email_calendar', description: '邮件、日历、会计、文档与会议等第三方集成参数配置。', titles: ['邮箱日历同步参数配置', '会议平台账号配置'] },
-  { module: 'other', code: 'integration_practice', name: '执业领域应用', route: '/workspace/integration_practice', description: '执业领域工具与应用接入配置。', titles: ['知识产权工具配置', '合规审查插件启用'] },
+  { module: 'other', code: 'integration_practice', name: '案件类型应用', route: '/workspace/integration_practice', description: '案件类型工具与应用接入配置。', titles: ['知识产权工具配置', '合规审查插件启用'] },
   { module: 'other', code: 'integration_bank', name: '银行同步', route: '/workspace/integration_bank', description: '银行与信用卡流水同步配置。', titles: ['银行账户同步配置', '信用卡支出导入测试'] },
 ];
 
@@ -712,7 +712,10 @@ const RETIRED_FEATURE_CODES = [
 ];
 
 /** 用户明确要求改名、旧库升级时也需强制同步名称的功能。 */
-const FORCED_FEATURE_NAMES: Record<string, string> = { mat_cases: '案件管理' };
+const FORCED_FEATURE_NAMES: Record<string, string> = {
+  mat_cases: '案件管理',
+  integration_practice: '案件类型应用',
+};
 
 /** 设置模块的 4 项专用页面使用 /settings/* 路由，但数据仍由 /api/workspace 承载。 */
 const SETTINGS_WORKSPACE_CODES = new Set([

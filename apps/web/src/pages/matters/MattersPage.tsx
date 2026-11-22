@@ -42,6 +42,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { MatterCategorySelect } from '@/components/common/MatterCategorySelect';
 import { PageHeader } from '@/components/common/PageHeader';
 import { EmptyRow, ErrorState, LoadingRows } from '@/components/common/States';
 import { useClients, useCreateMatter, useDeleteMatter, useMatters, useMatterStages, useMoveMatter, useMyPermissions, useUpdateMatter, useUsers } from '@/hooks/useCrm';
@@ -114,13 +115,13 @@ export function MatterFormDialog({
   }, [open, matter, defaultStageId, stages]);
 
   const submit = () => {
-    if (!form.title.trim() || !form.clientId || !form.stageId) return;
+    if (!form.title.trim() || !form.clientId || !form.stageId || !form.practiceArea) return;
     const payload: MatterInput = {
       title: form.title.trim(),
       caseNumber: form.caseNumber.trim() || null,
       clientId: Number(form.clientId),
       stageId: Number(form.stageId),
-      practiceArea: form.practiceArea.trim() || '未分类',
+      practiceArea: form.practiceArea,
       status: form.status,
       priority: form.priority,
       ownerId: form.ownerId ? Number(form.ownerId) : null,
@@ -142,7 +143,12 @@ export function MatterFormDialog({
         <TextField label="案件标题 *" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} fullWidth autoFocus />
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
           <TextField label="案号" value={form.caseNumber} onChange={(event) => setForm({ ...form, caseNumber: event.target.value })} fullWidth />
-          <TextField label="执业领域" value={form.practiceArea} onChange={(event) => setForm({ ...form, practiceArea: event.target.value })} fullWidth />
+          <MatterCategorySelect
+            label="案件类型 *"
+            value={form.practiceArea}
+            onChange={(practiceArea) => setForm({ ...form, practiceArea })}
+            allowEmpty
+          />
           <FormControl fullWidth>
             <InputLabel id="matter-client">客户 *</InputLabel>
             <Select labelId="matter-client" label="客户 *" value={form.clientId} onChange={(event) => setForm({ ...form, clientId: event.target.value })}>
@@ -183,7 +189,7 @@ export function MatterFormDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} color="inherit">取消</Button>
-        <Button variant="contained" onClick={submit} disabled={!form.title.trim() || !form.clientId || !form.stageId || createMatter.isPending || updateMatter.isPending}>保存</Button>
+        <Button variant="contained" onClick={submit} disabled={!form.title.trim() || !form.clientId || !form.stageId || !form.practiceArea || createMatter.isPending || updateMatter.isPending}>保存</Button>
       </DialogActions>
     </Dialog>
   );
@@ -381,7 +387,7 @@ export function MattersPage() {
                 <TableCell>案件</TableCell>
                 <TableCell>客户</TableCell>
                 <TableCell>阶段</TableCell>
-                <TableCell>执业领域</TableCell>
+                <TableCell>案件类型</TableCell>
                 <TableCell>状态</TableCell>
                 <TableCell>优先级</TableCell>
                 <TableCell>负责人</TableCell>

@@ -17,7 +17,7 @@ export type MatterCategoryStage = {
   tasks: MatterStageTask[];
 };
 
-/** 案件分类及其默认办理流程；分类名与案件的 practiceArea 对应。 */
+/** 案件类型及其默认办理流程；类型名称写入案件的 practiceArea 字段。 */
 @Entity('matter_categories')
 export class MatterCategory {
   @PrimaryGeneratedColumn()

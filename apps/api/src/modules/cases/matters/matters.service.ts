@@ -23,7 +23,7 @@ export class MattersService extends CrudService<Matter> {
     return matter;
   }
 
-  /** 新案件按业务领域匹配启用的案件类型，将首个阶段的任务实例化为案件任务。 */
+  /** 新案件按所选案件类型名称匹配启用的案件类型，将首个阶段的任务实例化为案件任务。 */
   private async applyTypeTemplate(matter: Matter) {
     const category = await this.categories.findOne({ where: { name: matter.practiceArea, enabled: true } });
     const firstStage = category?.stages?.[0];

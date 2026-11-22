@@ -17,10 +17,11 @@ import Skeleton from '@mui/material/Skeleton';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { Field, FieldGrid } from '@/components/common/Field';
+import { MatterCategorySelect } from '@/components/common/MatterCategorySelect';
 import { NotesPanel } from '@/components/common/NotesPanel';
 import { RecordLayout } from '@/components/common/RecordLayout';
 import { ErrorState } from '@/components/common/States';
-import { useConvertLead, useLead, useUsers } from '@/hooks/useCrm';
+import { useConvertLead, useLead, useMatterCategories, useUsers } from '@/hooks/useCrm';
 import { useTrackVisit } from '@/hooks/useRecent';
 import { avatarColor, formatDate, initials } from '@/lib/format';
 import { leadRatingMeta, leadStatusMeta } from '@/lib/meta';
@@ -44,14 +45,16 @@ export function LeadDetailPage() {
   const [convertForm, setConvertForm] = useState({ clientName: '', practiceArea: '', value: '0', title: '' });
   const { data: lead, isLoading, isError, error, refetch } = useLead(leadId);
   const { data: users } = useUsers();
+  const { data: categories } = useMatterCategories();
   const convertLead = useConvertLead();
   useTrackVisit('lead', leadId, lead?.name);
 
   const openConvert = () => {
+    const names = (categories ?? []).filter((category) => category.enabled).map((category) => category.name);
     setConvertResult(null);
     setConvertForm({
       clientName: lead?.company || lead?.name || '',
-      practiceArea: lead?.practiceArea ?? '',
+      practiceArea: names.find((name) => name === lead?.practiceArea) ?? names[0] ?? '',
       value: '0',
       title: lead?.name ? `${lead.name} 咨询案件` : '',
     });
@@ -118,7 +121,7 @@ export function LeadDetailPage() {
                   <Field label="邮箱">{lead.email}</Field>
                   <Field label="电话">{lead.phone}</Field>
                   <Field label="来源">{lead.source}</Field>
-                  <Field label="意向执业领域">{lead.practiceArea}</Field>
+                  <Field label="意向案件类型">{lead.practiceArea}</Field>
                   <Field label="状态">{leadStatusMeta[lead.status]?.label ?? lead.status}</Field>
                   <Field label="意向评级">{leadRatingMeta[lead.rating]?.label ?? lead.rating}</Field>
                   <Field label="负责人">{users?.find((user) => user.id === lead.ownerId)?.name}</Field>
@@ -174,7 +177,12 @@ export function LeadDetailPage() {
               </Typography>
               <TextField label="客户名称" value={convertForm.clientName} onChange={(event) => setConvertForm({ ...convertForm, clientName: event.target.value })} fullWidth />
               <TextField label="案件标题" value={convertForm.title} onChange={(event) => setConvertForm({ ...convertForm, title: event.target.value })} fullWidth />
-              <TextField label="执业领域" value={convertForm.practiceArea} onChange={(event) => setConvertForm({ ...convertForm, practiceArea: event.target.value })} fullWidth />
+              <MatterCategorySelect
+                label="案件类型 *"
+                value={convertForm.practiceArea}
+                onChange={(practiceArea) => setConvertForm({ ...convertForm, practiceArea })}
+                allowEmpty
+              />
               <TextField label="标的金额" type="number" value={convertForm.value} onChange={(event) => setConvertForm({ ...convertForm, value: event.target.value })} fullWidth />
             </>
           )}
@@ -182,11 +190,11 @@ export function LeadDetailPage() {
         <DialogActions>
           <Button onClick={() => setConvertOpen(false)} color="inherit">{convertResult ? '关闭' : '取消'}</Button>
           {!convertResult && (
-            <Button variant="contained" disabled={convertLead.isPending} onClick={() => convertLead.mutate({
+            <Button variant="contained" disabled={convertLead.isPending || !convertForm.practiceArea} onClick={() => convertLead.mutate({
               id: leadId,
               data: {
                 clientName: convertForm.clientName.trim() || undefined,
-                practiceArea: convertForm.practiceArea.trim() || undefined,
+                practiceArea: convertForm.practiceArea || undefined,
                 value: Number(convertForm.value) || undefined,
                 title: convertForm.title.trim() || undefined,
               },

@@ -497,7 +497,7 @@ export function MatterCategoriesPanel() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
         <Typography variant="body2" color="text.secondary">
-          共 {categories.length} 个案件类型 · 类型名称与案件「业务领域」对应，流程配置仅用于之后新建的案件
+          共 {categories.length} 个案件类型 · 新建案件与线索时从这里选择案件类型，流程配置仅用于之后新建的案件
         </Typography>
         <Button variant="contained" size="small" startIcon={<AddOutlined />} onClick={() => setFormOpen(true)}>新建类型</Button>
       </Stack>

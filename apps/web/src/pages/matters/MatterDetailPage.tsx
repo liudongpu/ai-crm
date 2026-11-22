@@ -92,7 +92,7 @@ export function MatterDetailPage() {
                 <Field label="案号">{matter.caseNumber}</Field>
                 <Field label="客户">{clientName}</Field>
                 <Field label="案件阶段">{stageName}</Field>
-                <Field label="执业领域">{matter.practiceArea}</Field>
+                <Field label="案件类型">{matter.practiceArea}</Field>
                 <Field label="状态">{matterStatusMeta[matter.status]?.label ?? matter.status}</Field>
                 <Field label="优先级">{priorityMeta[matter.priority]?.label ?? matter.priority}</Field>
                 <Field label="负责人">{ownerName}</Field>

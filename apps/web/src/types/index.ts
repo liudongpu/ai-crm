@@ -71,7 +71,7 @@ export interface MatterCategoryStage {
   tasks: MatterStageTask[];
 }
 
-/** 案件类型：与案件的 practiceArea 对应，并携带该类型的阶段与任务流程模板。 */
+/** 案件类型：新建案件与线索时选择，名称保存在 practiceArea 字段，并携带阶段与任务流程模板。 */
 export interface MatterCategory extends BaseRecord {
   code: string;
   name: string;

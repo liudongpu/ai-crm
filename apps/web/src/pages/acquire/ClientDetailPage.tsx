@@ -112,7 +112,7 @@ export function ClientDetailPage() {
         {tab === 'matters' && (
           <TableContainer>
             <Table size="small">
-              <TableHead><TableRow><TableCell>案件</TableCell><TableCell>阶段</TableCell><TableCell>执业领域</TableCell><TableCell>状态</TableCell><TableCell align="right">标的金额</TableCell></TableRow></TableHead>
+              <TableHead><TableRow><TableCell>案件</TableCell><TableCell>阶段</TableCell><TableCell>案件类型</TableCell><TableCell>状态</TableCell><TableCell align="right">标的金额</TableCell></TableRow></TableHead>
               <TableBody>
                 {matters.map((matter) => (
                   <TableRow key={matter.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/matters/${matter.id}`)}>

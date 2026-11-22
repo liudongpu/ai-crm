@@ -217,7 +217,7 @@ export class LegalAiService {
       nodes.push({ id: 'no-party', label: '尚未登记当事人', role: '待补充', kind: 'party' });
     }
 
-    // 核心争议焦点：材料关键词命中 + 业务领域常见争点，附命中来源。
+    // 核心争议焦点：材料关键词命中 + 案件类型常见争点，附命中来源。
     const disputeRules: Array<{ label: string; re: RegExp; basis: string }> = [
       { label: '合同是否成立及效力', re: /合同效力|成立|无效|撤销/, basis: '民法典合同编' },
       { label: '货物/工程是否已验收合格', re: /验收|质量|瑕疵|不合格/, basis: '在案验收与质量材料' },
@@ -234,7 +234,7 @@ export class LegalAiService {
         return {
           label: rule.label,
           basis: rule.basis,
-          support: hit ? `${hit.name}：${hit.text.slice(0, 60).replace(/\s+/g, ' ')}` : '来自案件业务领域与案由推断，待补充证据',
+          support: hit ? `${hit.name}：${hit.text.slice(0, 60).replace(/\s+/g, ' ')}` : '来自案件类型与案由推断，待补充证据',
         };
       });
 
@@ -246,7 +246,7 @@ export class LegalAiService {
     if (!corpus.match(/签字|盖章|签署/)) gaps.push('合同签署/盖章版本有待核验');
 
     const summary = [
-      `【案件】${matter.title}（${matter.caseNumber ?? '暂无案号'}），案由/业务领域：${matter.practiceArea}，当前阶段：${matter.stage?.name ?? '—'}。`,
+      `【案件】${matter.title}（${matter.caseNumber ?? '暂无案号'}），案件类型：${matter.practiceArea}，当前阶段：${matter.stage?.name ?? '—'}。`,
       `【材料】已归集卷宗材料 ${sources.length} 份（文档 ${docs.length}、备注 ${notes.length}），提取时间节点 ${sortedTimeline.length} 个，登记当事人 ${parties.length} 名。`,
       `【争点】初步识别核心争议焦点 ${disputes.length} 项：${disputes.map((d) => d.label).join('；') || '暂未识别，需补充卷宗材料'}。`,
       `【风险】${gaps.length ? '证据缺口：' + gaps.join('；') + '。' : '未发现明显证据缺口，仍需人工复核。'}`,

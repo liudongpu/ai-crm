@@ -195,7 +195,7 @@ function MattersReport({ data }: { data: CoreReports['matters'] }) {
             <Box><Typography variant="caption" color="text.secondary">进行中案件</Typography><Typography variant="h4">{data.open}</Typography></Box>
             <Box><Typography variant="caption" color="text.secondary">已结案</Typography><Typography variant="h4">{data.closed}</Typography></Box>
           </Box>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>按执业领域</Typography>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>按案件类型</Typography>
           {data.byArea.length === 0 ? <EmptyState title="暂无案件数据" /> : (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={data.byArea} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
@@ -363,7 +363,7 @@ export function ReportsPage() {
               <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>
                 <Card>
                   <CardContent>
-                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>执业领域案件分布</Typography>
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>案件类型分布</Typography>
                     {report.mattersByPracticeArea.length === 0 ? (
                       <EmptyState title="暂无案件数据" />
                     ) : (

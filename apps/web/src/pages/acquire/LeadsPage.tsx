@@ -35,6 +35,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { MatterCategorySelect } from '@/components/common/MatterCategorySelect';
 import { PageHeader } from '@/components/common/PageHeader';
 import { EmptyRow, ErrorState, LoadingRows } from '@/components/common/States';
 import {
@@ -99,7 +100,7 @@ export function LeadFormDialog({ open, onClose, lead }: { open: boolean; onClose
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
       source: form.source.trim() || null,
-      practiceArea: form.practiceArea.trim() || null,
+      practiceArea: form.practiceArea || null,
       description: form.description.trim() || null,
       status: form.status,
       rating: form.rating,
@@ -122,7 +123,13 @@ export function LeadFormDialog({ open, onClose, lead }: { open: boolean; onClose
           <TextField label="邮箱" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} fullWidth />
           <TextField label="电话" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} fullWidth />
           <TextField label="来源" value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })} fullWidth placeholder="网站 / 转介绍 / 广告 / 线下活动 / 老客户" />
-          <TextField label="意向执业领域" value={form.practiceArea} onChange={(event) => setForm({ ...form, practiceArea: event.target.value })} fullWidth />
+          <MatterCategorySelect
+            label="意向案件类型"
+            value={form.practiceArea}
+            onChange={(practiceArea) => setForm({ ...form, practiceArea })}
+            allowEmpty
+            emptyLabel="未选择"
+          />
           <FormControl fullWidth>
             <InputLabel id="lead-status">状态</InputLabel>
             <Select labelId="lead-status" label="状态" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as LeadStatus })}>
@@ -387,7 +394,7 @@ export function LeadsPage() {
             <TableRow>
               <TableCell>咨询人</TableCell>
               <TableCell>公司 / 来源</TableCell>
-              <TableCell>意向领域</TableCell>
+              <TableCell>意向案件类型</TableCell>
               <TableCell>状态</TableCell>
               <TableCell>评级</TableCell>
               <TableCell>冲突检查</TableCell>
