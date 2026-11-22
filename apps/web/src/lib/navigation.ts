@@ -2,6 +2,15 @@ import type { Feature, FeatureCatalog } from '../types';
 
 export type Navigation = { module?: FeatureCatalog; feature?: Feature };
 
+/** 案件中心已移除二级功能定义，但页面路由仍可直接访问；这些路径仍归属案件中心，不选中具体功能。 */
+const LEGACY_MATTERS_PREFIXES = ['/tasks', '/calendar', '/documents', '/workspace/draft_esign'];
+
+function isLegacyMattersRoute(pathname: string): boolean {
+  return LEGACY_MATTERS_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 /** Base path of a feature route, without any query string (e.g. /billing?tab=time -> /billing). */
 export function baseRoute(feature: Feature): string {
   return feature.route.split('?')[0] ?? feature.route;
@@ -72,6 +81,9 @@ export function resolveNavigation(
     const best = candidates[0];
     return { module: best.module, feature: best.feature };
   }
+
+  const matters = modules.find((module) => module.code === 'matters');
+  if (matters && isLegacyMattersRoute(pathname)) return { module: matters };
 
   // Unknown URLs fall back to the workbench, which is the application default.
   return { module: modules.find((module) => module.code === 'dashboard') ?? modules[0] };

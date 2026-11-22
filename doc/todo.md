@@ -7,6 +7,9 @@
 
 按照当日时间列出已完成的事项。
 
+## 2026-11-22
+- 案件中心移除全部二级功能：功能目录仅保留「案件管理」（原「案件档案」改名，`mat_cases` 强制同步名称），删除 `mat_tasks`、`mat_calendar`、`mat_statute`、`mat_calendar_ai`、`mat_sync`、`mat_time_link`、`mat_documents`、`draft_esign` 8 项功能定义（功能总数 61→53）。前端 Sidebar 与移动端导航对工作台、案件中心统一隐藏二级功能列，点击一级模块分别直达 `/schedule` 与 `/matters`；已移除功能的原页面路由保留，`resolveNavigation` 将其归属案件中心以避免误高亮工作台。种子 `RETIRED_FEATURE_CODES` 扩展以清理旧库残留导航与记录，README 功能表与说明同步更新。
+
 ## 2026-11-21
 - 将原案件中心「截止日期计算」（`mat_deadlines`，`/calendar/deadlines`）合并到律师工具箱「诉讼期限推算器」（`tool_deadline`，`/tools/deadline`）：推算器新增「快速推算 / 期限链管理」双页签，法院规则与节假日维护、期限链生成与重算、状态流转、一键生成日程全部迁入并复用原有 `/api/calendar/*` 数据链路；删除原功能定义、页面组件与路由，功能总数由 62 调整为 61（案件中心 9 项、工具箱仍 6 项）。种子加入已退役功能清理逻辑，旧库升级自动移除 `mat_deadlines` 导航与演示记录；旧 `/calendar/deadlines` 重定向到 `/tools/deadline`，风险预警链接、导航注释与文档同步更新。
 - 设置安全模块 7 个二级功能全部改为独立专用页面与独立路由：`/settings/users`、`/settings/permissions`、`/settings/categories`、`/settings/security-auth`、`/settings/access-control`、`/settings/ai-policy`、`/settings/audit`；原单页 Tabs 与「案件阶段」只读页签移除，`/settings` 及旧 `?tab=` 深链接重定向到对应独立页。安全与合规、访问控制、AI数据政策、审计追溯不再复用通用 `/workspace/*` 页面，改由设置专用页面承载，数据仍通过 `/api/workspace` 持久化；功能总数保持 9 模块 / 62 功能不变。同步更新后端功能目录 route、左侧二级导航高亮、用户菜单入口与文档。

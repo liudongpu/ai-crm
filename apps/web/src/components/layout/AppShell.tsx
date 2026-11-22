@@ -62,8 +62,9 @@ const moduleIcons: Record<string, ReactElement> = {
   other: <ExtensionOutlined fontSize="small" />,
 };
 
-/** 工作台直接打开日历，不再展示自己的二级菜单。 */
-const MODULE_DEFAULT_ROUTES: Record<string, string> = { dashboard: '/schedule' };
+/** 工作台、案件中心直接打开默认页，不展示自己的二级菜单。 */
+const DIRECT_MODULES = new Set(['dashboard', 'matters']);
+const MODULE_DEFAULT_ROUTES: Record<string, string> = { dashboard: '/schedule', matters: '/matters' };
 
 const createMenu = [
   { label: '新案件', to: '/matters?new=1' },
@@ -400,7 +401,7 @@ function MobileNavContent({ onNavigate, ...props }: PrimaryNavProps) {
   return (
     <Box sx={{ height: '100%', overflowY: 'auto' }}>
       <PrimaryNav {...props} fill={false} onNavigate={onNavigate} />
-      {props.active.module?.code !== 'dashboard' && (
+      {props.active.module?.code && !DIRECT_MODULES.has(props.active.module.code) && (
         <>
           <Divider />
           <SecondaryNav active={props.active} fill={false} onNavigate={onNavigate} />
@@ -532,7 +533,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onToggle={() => setRailCollapsed((value) => !value)}
           />
         </Box>
-        {active.module?.code !== 'dashboard' && (
+        {active.module?.code && !DIRECT_MODULES.has(active.module.code) && (
           <Box
             component="nav"
             aria-label="二级功能"

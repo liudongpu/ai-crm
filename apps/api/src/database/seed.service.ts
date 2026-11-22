@@ -646,16 +646,8 @@ const FEATURES: FeatureSeed[] = [
   { module: 'acquire', code: 'grow_engagement', name: '签约转化', route: '/workspace/grow_engagement', description: '管理报价、合同签署与委托转正式客户的转化。', titles: ['常年法律顾问报价审批', '委托合同签署与归档'] },
   { module: 'acquire', code: 'comm_client_portal', name: '客户门户', route: '/workspace/comm_client_portal', description: '客户查看进度、交材料、看账单与付款，含自助查询配置。', titles: ['门户展示材料清单配置', '客户自助下载权限调整'] },
 
-  // ── M3 案件中心 ──────────────────────────────────────────────
-  { module: 'matters', code: 'mat_cases', name: '案件档案', route: '/matters', description: '案件立卷、当事人与团队、活动时间线及案卷归档。', titles: ['货款纠纷案卷材料清单', '医疗纠纷案件时间轴梳理'] },
-  { module: 'matters', code: 'mat_tasks', name: '任务与流程', route: '/tasks', description: '任务分派、进度、截止日期与办案流程模板，一键生成任务。', titles: ['证据交换任务分派', '商事诉讼流程模板启用'] },
-  { module: 'matters', code: 'mat_calendar', name: '日历管理', route: '/calendar', description: '按案件组织日历事件，维护可见性与提醒。', titles: ['下周庭审日历排期', '团队共享日历订阅'] },
-  { module: 'matters', code: 'mat_statute', name: '时效管理', route: '/calendar/statutes', description: '诉讼时效台账与到期预警。', titles: ['著作权维权时效预警', '应收账款诉讼时效台账'] },
-  { module: 'matters', code: 'mat_calendar_ai', name: 'AI日历辅助', route: '/calendar/assistant', description: '从通知文本识别日期，生成待人工确认的日程草稿。', titles: ['会议纪要日程提取记录', '期限提醒文案生成记录'] },
-  { module: 'matters', code: 'mat_sync', name: '同步与提醒', route: '/calendar/sync', description: 'ICS 日历导入导出与提醒队列。', titles: ['日历文件导入导出记录', '开庭前三天提醒规则'] },
-  { module: 'matters', code: 'mat_time_link', name: '日历计费联动', route: '/calendar/time-link', description: '未记工时日程与工时记录联动。', titles: ['庭审日程关联工时记录', '会议时长自动计费配置'] },
-  { module: 'matters', code: 'mat_documents', name: '文档管理', route: '/documents', description: '文档存储、模板、法院表格与协作版本统一管理。', titles: ['证据材料目录整理', '许可协议第三版批注汇总'] },
-  { module: 'matters', code: 'draft_esign', name: '电子签名', route: '/workspace/draft_esign', description: '签署流程配置与签署状态跟踪，保留审计轨迹。', titles: ['和解协议签署流程配置', '客户签署待办跟踪'] },
+  // ── M3 案件中心（仅保留案件管理，原二级功能已全部移除） ──────
+  { module: 'matters', code: 'mat_cases', name: '案件管理', route: '/matters', description: '案件立卷、当事人与团队、活动时间线及案卷归档；案件中心默认入口，不设二级菜单。', titles: ['货款纠纷案卷材料清单', '医疗纠纷案件时间轴梳理'] },
 
   // ── M4 法律 AI ───────────────────────────────────────────────
   { module: 'legal_ai', code: 'work_case_analysis', name: '卷宗智能解析', route: '/workspace/work_case_analysis', description: '批量归集卷宗材料，自动提取时间线、当事人关系图谱与核心争议焦点，生成案件初筛摘要。', titles: ['货款纠纷卷宗时间线解析', '竞业限制争点与证据缺口分析'] },
@@ -710,8 +702,18 @@ const FEATURES: FeatureSeed[] = [
   { module: 'other', code: 'integration_bank', name: '银行同步', route: '/workspace/integration_bank', description: '银行与信用卡流水同步配置。', titles: ['银行账户同步配置', '信用卡支出导入测试'] },
 ];
 
-/** 已合并到其他功能、旧库升级时需要清理的历史功能编码。 */
-const RETIRED_FEATURE_CODES = ['mat_deadlines'];
+/**
+ * 已合并或直接移除、旧库升级时需要清理的历史功能编码。
+ * 案件中心仅保留「案件管理」，其余二级功能从功能目录移除；原页面路由仍可直接访问。
+ */
+const RETIRED_FEATURE_CODES = [
+  'mat_deadlines',
+  'mat_tasks', 'mat_calendar', 'mat_statute', 'mat_calendar_ai',
+  'mat_sync', 'mat_time_link', 'mat_documents', 'draft_esign',
+];
+
+/** 用户明确要求改名、旧库升级时也需强制同步名称的功能。 */
+const FORCED_FEATURE_NAMES: Record<string, string> = { mat_cases: '案件管理' };
 
 /** 设置模块的 4 项专用页面使用 /settings/* 路由，但数据仍由 /api/workspace 承载。 */
 const SETTINGS_WORKSPACE_CODES = new Set([
@@ -1264,6 +1266,7 @@ export class SeedService {
       modulePositions.set(item.module, position);
       const existing = await this.featureEntities.findOne({ where: { code: item.code } });
       const feature = existing ?? this.featureEntities.create({ code: item.code, name: item.name });
+      if (FORCED_FEATURE_NAMES[item.code]) feature.name = FORCED_FEATURE_NAMES[item.code];
       feature.moduleId = moduleIds.get(item.module)!;
       feature.description = item.description;
       feature.route = item.route;
