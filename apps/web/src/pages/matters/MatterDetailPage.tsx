@@ -85,28 +85,30 @@ export function MatterDetailPage() {
         tab={tab}
         onTabChange={setTab}
       >
-        <MatterStageStepper matter={matter} stages={stages ?? []} />
         {tab === 'overview' && (
-          <Card>
-            <CardContent sx={{ p: 2.5 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>案件信息</Typography>
-              <FieldGrid columns={3}>
-                <Field label="案号">{matter.caseNumber}</Field>
-                <Field label="客户">{clientName}</Field>
-                <Field label="案件阶段">{stageName}</Field>
-                <Field label="案件类型">{matter.practiceArea}</Field>
-                <Field label="状态">{matterStatusMeta[matter.status]?.label ?? matter.status}</Field>
-                <Field label="优先级">{priorityMeta[matter.priority]?.label ?? matter.priority}</Field>
-                <Field label="负责人">{ownerName}</Field>
-                <Field label="标的金额">{formatCurrency(matter.value)}</Field>
-                <Field label="立案日期">{formatDate(matter.openDate)}</Field>
-                <Field label="结案日期">{formatDate(matter.closeDate)}</Field>
-                <Field label="创建时间">{formatDate(matter.createdAt)}</Field>
-                <Field label="看板排序">{matter.position}</Field>
-                <Field label="案件描述" span={3}>{matter.description}</Field>
-              </FieldGrid>
-            </CardContent>
-          </Card>
+          <>
+            <MatterStageStepper matter={matter} stages={stages ?? []} />
+            <Card>
+              <CardContent sx={{ p: 2.5 }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>案件信息</Typography>
+                <FieldGrid columns={3}>
+                  <Field label="案号">{matter.caseNumber}</Field>
+                  <Field label="客户">{clientName}</Field>
+                  <Field label="案件阶段">{stageName}</Field>
+                  <Field label="案件类型">{matter.practiceArea}</Field>
+                  <Field label="状态">{matterStatusMeta[matter.status]?.label ?? matter.status}</Field>
+                  <Field label="优先级">{priorityMeta[matter.priority]?.label ?? matter.priority}</Field>
+                  <Field label="负责人">{ownerName}</Field>
+                  <Field label="标的金额">{formatCurrency(matter.value)}</Field>
+                  <Field label="立案日期">{formatDate(matter.openDate)}</Field>
+                  <Field label="结案日期">{formatDate(matter.closeDate)}</Field>
+                  <Field label="创建时间">{formatDate(matter.createdAt)}</Field>
+                  <Field label="看板排序">{matter.position}</Field>
+                  <Field label="案件描述" span={3}>{matter.description}</Field>
+                </FieldGrid>
+              </CardContent>
+            </Card>
+          </>
         )}
         {tab === 'people' && <MatterPeoplePanel matterId={matterId} />}
         {tab === 'tasks' && <TasksPanel matterId={matterId} />}
