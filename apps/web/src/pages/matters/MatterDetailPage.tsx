@@ -13,6 +13,7 @@ import { CommunicationsPanel } from '@/components/common/CommunicationsPanel';
 import { DocumentsPanel } from '@/components/common/DocumentsPanel';
 import { Field, FieldGrid } from '@/components/common/Field';
 import { MatterPeoplePanel } from '@/components/common/MatterPeoplePanel';
+import { MatterStageStepper } from '@/components/common/MatterStageStepper';
 import { NotesPanel } from '@/components/common/NotesPanel';
 import { RecordLayout } from '@/components/common/RecordLayout';
 import { ToolCalculationsPanel } from '@/components/common/ToolCalculationsPanel';
@@ -84,6 +85,7 @@ export function MatterDetailPage() {
         tab={tab}
         onTabChange={setTab}
       >
+        <MatterStageStepper matter={matter} stages={stages ?? []} />
         {tab === 'overview' && (
           <Card>
             <CardContent sx={{ p: 2.5 }}>

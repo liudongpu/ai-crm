@@ -443,9 +443,10 @@ export const useDeleteMatterTeamMember = () =>
   useActionMutation<number>((id) => api.matterPeople.removeMember(id), '团队成员已移除');
 export const useUpdateMatter = () => useUpdateMutation<MatterInput>((args) => api.matters.update(args.id, args.data), '案件已更新');
 export const useDeleteMatter = () => useDeleteMutation(api.matters.remove, '案件已删除');
-export const useMoveMatter = () =>
+export const useMoveMatter = (success?: string) =>
   useActionMutation<{ id: number; stageId: number; position?: number }>((args) =>
     api.matters.move(args.id, args.stageId, args.position),
+    success,
   );
 
 export const useCreateLead = () => useCreateMutation<LeadInput>(api.leads.create, '咨询线索已创建');
